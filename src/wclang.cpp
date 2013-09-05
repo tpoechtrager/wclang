@@ -325,7 +325,7 @@ static void parseargs(int argc, char **argv, const char *target,
         {
             arg += std::strlen(COMMANDPREFIX);
 
-            if (!std::strcmp(arg, "version") || !strcmp(arg, "v"))
+            if (!std::strcmp(arg, "version") || !std::strcmp(arg, "v"))
             {
                 printheader();
                 std::cout << "Copyright (C) 2013 Thomas Poechtrager." << std::endl;
@@ -349,7 +349,7 @@ static void parseargs(int argc, char **argv, const char *target,
                 size_t i = 0;
                 for (const char *var : ENVVARS)
                 {
-                    if (!strcmp(arg, var))
+                    if (!std::strcmp(arg, var))
                     {
                         const char *val = env[i].c_str();
                         val += strlen(var) + 1; /* skip variable name */
@@ -395,7 +395,7 @@ static void parseargs(int argc, char **argv, const char *target,
                 std::string arch(target, end-target);
                 std::cout << arch << std::endl;
             }
-            else if (!strcmp(arg, "verbose"))
+            else if (!std::strcmp(arg, "verbose"))
             {
                 cmdargs.verbose = true;
                 continue;
@@ -579,8 +579,15 @@ int main(int argc, char **argv)
     for (int i = 1; i < argc; ++i)
     {
         const char *arg = argv[i];
+        char buf[1+sizeof(COMMANDPREFIX)];
 
-        if (!strncmp(arg, COMMANDPREFIX, strlen(COMMANDPREFIX)))
+        if (!std::strncmp(arg, COMMANDPREFIX, strlen(COMMANDPREFIX)))
+            continue;
+
+        *buf = '-';
+        std::strcpy(buf+1, COMMANDPREFIX);
+
+        if (!std::strncmp(arg, buf, strlen(buf)))
             continue;
 
         args.push_back(argv[i]);
