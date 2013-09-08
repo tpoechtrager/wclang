@@ -448,8 +448,8 @@ int main(int argc, char **argv)
 
     const char *compiler = nullptr;
 
-#ifdef HAVE_EXECVPE
     string_vector env;
+#ifdef HAVE_EXECVPE
     char **cenv = nullptr;
     int cenvi = 0;
 #endif
