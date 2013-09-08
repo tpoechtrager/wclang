@@ -566,7 +566,7 @@ int main(int argc, char **argv)
     if (!compilerflags.empty())
         args.push_back(compilerflags);
 
-    args.push_back("-target");
+    args.push_back(CLANG_TARGET_OPT);
     args.push_back(target);
 
     for (const auto &dir : stdpaths)

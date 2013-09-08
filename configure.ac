@@ -9,6 +9,18 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
 
 # Checks for programs.
+m4_define([CLANG_TARGET_OPT], m4_esyscmd([scripts/check_clang_target_option.sh]))
+
+ifelse(m4_sysval, 0, , [
+    echo "unable to determine clang target option"
+    echo "clang not installed?"
+    exit 1])
+
+CXXFLAGS+="-DCLANG_TARGET_OPT="
+CXXFLAGS+="\"\\\""
+CXXFLAGS+=CLANG_TARGET_OPT
+CXXFLAGS+="\"\\\""
+
 AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_AWK

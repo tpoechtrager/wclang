@@ -7,7 +7,7 @@ After the installation you will have "w32-clang", "w32-clang++", "w64-clang" and
 PREREQUISITES:
 
  A C++11 compiler for compiling the wrapper (g++ 4.6+, clang)
- clang (3.1+)
+ clang
  mingw-w64 with its headers and libs
 
 INSTALLATION:
@@ -24,3 +24,12 @@ EXAMPLES:
 
 LISTING AVAILABLE PARAMETERS:
  w32-clang -wc-help
+
+KNOWN WORKING ON:
+ ubuntu, debian (wheezy*), mint, arch, fedora
+ others dists may work too, but have not been tested
+
+
+* wheezy: important: clang-3.0 coming with wheezy is too old
+  to compile the wrapper, so use g++ or get a newer clang
+  from e.g: http://llvm.org/apt/
