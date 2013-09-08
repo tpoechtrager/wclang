@@ -138,6 +138,9 @@ static bool findcppheaders(const char *target, string_vector &cpppaths,
 
     for (const auto &stddir : stdpaths)
     {
+        dir = stddir + std::string("/c++");
+        if (trydir(dir, nullptr)) return true;
+
         for (const char *v : MINGWVERSIONS)
         {
             dir = stddir + std::string("/c++/") + std::string(v);
@@ -197,7 +200,10 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
 
         dir  = std::string(stdinclude) + std::string("/");
         dir += std::string(target) + std::string("/include");
+        if (trydir(dir)) return true;
 
+        dir  = std::string(stdinclude) + std::string("/");
+        dir += std::string(target) + std::string("/sys-root/mingw/include");
         if (trydir(dir)) return true;
     }
 
@@ -318,7 +324,7 @@ static void parseargs(int argc, char **argv, const char *target,
          * Everything with COMMANDPREFIX belongs to us
          */
 
-        if (!std::strncmp(arg, "--", strlen("--")))
+        if (!std::strncmp(arg, "--", STRLEN("--")))
             ++arg;
 
         if (!std::strncmp(arg, COMMANDPREFIX, std::strlen(COMMANDPREFIX)))
@@ -336,8 +342,8 @@ static void parseargs(int argc, char **argv, const char *target,
             {
                 std::cout << target << std::endl;
             }
-            else if (!std::strncmp(arg, "env-", std::strlen("env-")) ||
-                     !std::strncmp(arg, "e-", std::strlen("e-")))
+            else if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
+                     !std::strncmp(arg, "e-", STRLEN("e-")))
             {
                 bool found = false;
 
@@ -376,8 +382,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     std::exit(EXIT_FAILURE);
                 }
             }
-            else if (!std::strncmp(arg, "env", std::strlen("env")) ||
-                     !std::strncmp(arg, "e", std::strlen("e")))
+            else if (!std::strcmp(arg, "env") || !std::strcmp(arg, "e"))
             {
                 for (const auto &v : env) std::cout << v << " ";
                 std::cout << std::endl;
@@ -462,7 +467,7 @@ int main(int argc, char **argv)
     else ++e;
 
     p = std::strchr(e, '-');
-    if (!p++ || std::strncmp(p, "clang", strlen("clang")))
+    if (!p++ || std::strncmp(p, "clang", STRLEN("clang")))
     {
         std::cerr << "invalid invokation name: clang should be followed "
                      "after target (e.g: w32-clang)" << std::endl;
@@ -473,7 +478,7 @@ int main(int argc, char **argv)
      * Check if we want the C or the C++ compiler
      */
 
-    p += std::strlen("clang");
+    p += STRLEN("clang");
     if (!std::strcmp(p, "++")) iscpp = true;
     else if (*p) {
         std::cerr << "invalid invokation name: ++ (or nothing) should be "
@@ -485,12 +490,12 @@ int main(int argc, char **argv)
      * Check if we should target win32 or win64...
      */
 
-    if (!std::strncmp(e, "w32", strlen("w32")))
+    if (!std::strncmp(e, "w32", STRLEN("w32")))
     {
         target = findtarget32(stdpaths);
         targettype = TARGET_WIN32;
     }
-    else if (!std::strncmp(e, "w64", strlen("w64")))
+    else if (!std::strncmp(e, "w64", STRLEN("w64")))
     {
         target = findtarget64(stdpaths);
         targettype = TARGET_WIN64;
