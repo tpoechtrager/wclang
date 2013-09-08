@@ -25,7 +25,7 @@ EXAMPLES:
 LISTING AVAILABLE PARAMETERS:
  w32-clang -wc-help
 
-KNOWN WORKING ON:
+KNOWN TO WORK ON:
  ubuntu, debian (wheezy*), mint, arch, fedora
  others dists may work too, but have not been tested
 
