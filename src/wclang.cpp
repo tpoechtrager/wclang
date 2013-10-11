@@ -226,6 +226,49 @@ static const char *findtarget64(string_vector &stdpaths)
     return nullptr;
 }
 
+void appendexetooutputname(char **cargs)
+{
+    for (char **arg = cargs; *arg; ++arg)
+    {
+        if (!std::strncmp(*arg, "-o", STRLEN("-o")))
+        {
+            if (!(*arg)[2] && (!*++arg || **arg == '-'))
+                break;
+
+            const char *filename = !std::strncmp(*arg, "-o", STRLEN("-o")) ? &(*arg)[2] : *arg;
+            const char *pfix = std::strrchr(filename, '.');
+
+            if (pfix && (!std::strcmp(pfix, ".exe") || !std::strcmp(pfix, ".dll")))
+                return;
+
+            for (char **p = arg+1; *p; ++p)
+            {
+                if (!std::strcmp(*p, "-c"))
+                    return;
+            }
+
+            std::cerr << R"(wclang: appending ".exe" to output filename ")" << filename << R"(")" << std::endl;
+
+            filename = nullptr;
+            pfix = nullptr;
+
+            *arg = (char*)std::realloc(*arg, strlen(*arg)+STRLEN(".exe")+1);
+
+            if (!*arg)
+            {
+                std::cerr << "out of memory" << std::endl;
+                std::exit(EXIT_FAILURE);
+            }
+
+            std::strcat(*arg, ".exe");
+            break;
+        }
+        else if (!std::strcmp(*arg, "-c")) {
+            break;
+        }
+    }
+}
+
 /*
  * Tools
  */
@@ -603,6 +646,8 @@ int main(int argc, char **argv)
 
     for (const auto &opt : args)
         cargs[cargsi++] = strdup(opt.c_str());
+
+    appendexetooutputname(cargs);
 
     /*
      * Setup environment variables
