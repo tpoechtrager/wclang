@@ -36,6 +36,11 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="wclang.cpp" />
+		<Unit filename="wclang.h" />
+		<Unit filename="wclang_cache.cpp" />
+		<Unit filename="wclang_cache.h" />
+		<Unit filename="wclang_time.cpp" />
+		<Unit filename="wclang_time.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />

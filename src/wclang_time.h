@@ -1,5 +1,3 @@
-typedef unsigned long long ullong;
-
 #ifdef HAVE_STD_CHRONO
 #include <chrono>
 typedef std::chrono::steady_clock::time_point time_point;

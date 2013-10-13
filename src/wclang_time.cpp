@@ -16,7 +16,6 @@
 
 #include <tuple>
 #include <stdexcept>
-#include <vector>
 #include "wclang.h"
 #include "wclang_time.h"
 

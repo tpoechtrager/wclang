@@ -15,20 +15,16 @@
  ***************************************************************************/
 
 #include <iostream>
+#include <fstream>
 #include <typeinfo>
-#include <stdexcept>
 #include <tuple>
 #include <sstream>
-#include <string>
-#include <vector>
 #include <cstring>
-#include <cstdlib>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "wclang.h"
 #include "wclang_time.h"
-
-typedef std::vector<std::string> string_vector;
+#include "wclang_cache.h"
 
 /*
  * Supported targets
@@ -52,9 +48,10 @@ static constexpr const char* TARGET64[] = {
 };
 
 /*
- * Remove once exceptions are supported
+ * Remove -fno-exceptions once exceptions are supported
  */
 static constexpr const char* CXXFLAGS = "-fno-exceptions";
+static constexpr const char* CFLAGS = "";
 
 static constexpr const char* ENVVARS[] = {
     "AR", "AS", "CPP", "DLLTOOL", "DLLWRAP",
@@ -63,18 +60,13 @@ static constexpr const char* ENVVARS[] = {
     "SIZE", "STRINGS", "STRIP", "WINDMC", "WINDRES"
 };
 
-static constexpr const char* COMMANDPREFIX = "-wc-";
-
-struct commandargs {
-    bool verbose;
-    commandargs() : verbose(false) {}
-};
+static constexpr char COMMANDPREFIX[] = "-wc-";
 
 /*
  * Paths where we should look for mingw c++ headers
  */
 
-static constexpr const char* CPPINCLUDEBASE[] = {
+static constexpr const char* CXXINCLUDEBASE[] = {
     "/usr",
     "/usr/lib/gcc",
     "/usr/local/include/c++",
@@ -105,7 +97,7 @@ static constexpr const char* MINGWVERSIONS[] = {
     "4.4.2", "4.4.1", "4.4"
 };
 
-static bool findcppheaders(const char *target, string_vector &cpppaths,
+static bool findcxxheaders(const char *target, string_vector &cxxpaths,
                            const string_vector &stdpaths)
 {
     std::string base;
@@ -120,13 +112,13 @@ static bool findcppheaders(const char *target, string_vector &cpppaths,
             if (!base.empty() && v)
             {
                 base += std::string(v);
-                cpppaths.push_back(base);
+                cxxpaths.push_back(base);
             }
 
-            cpppaths.push_back(dir);
+            cxxpaths.push_back(dir);
 
 #ifdef _DEBUG
-            for (const auto &dir : cpppaths)
+            for (const auto &dir : cxxpaths)
                 std::cout << "found c++ include dir: " << dir << std::endl;
 #endif
 
@@ -148,9 +140,9 @@ static bool findcppheaders(const char *target, string_vector &cpppaths,
         }
     }
 
-    for (const char *cppinclude : CPPINCLUDEBASE)
+    for (const char *cxxinclude : CXXINCLUDEBASE)
     {
-        base = std::string(cppinclude) + std::string("/");
+        base = std::string(cxxinclude) + std::string("/");
 
         for (const char *v : MINGWVERSIONS)
         {
@@ -159,9 +151,9 @@ static bool findcppheaders(const char *target, string_vector &cpppaths,
         }
     }
 
-    for (const char *cppinclude : CPPINCLUDEBASE)
+    for (const char *cxxinclude : CXXINCLUDEBASE)
     {
-        base  = std::string(cppinclude) + std::string("/");
+        base  = std::string(cxxinclude) + std::string("/");
         base += std::string(target) + std::string("/");
 
         for (const char *v : MINGWVERSIONS)
@@ -252,7 +244,7 @@ void appendexetooutputname(char **cargs)
             filename = nullptr;
             pfix = nullptr;
 
-            *arg = (char*)std::realloc(*arg, strlen(*arg)+STRLEN(".exe")+1);
+            *arg = (char*)std::realloc(*arg, std::strlen(*arg)+STRLEN(".exe")+1);
 
             if (!*arg)
             {
@@ -370,9 +362,9 @@ static void parseargs(int argc, char **argv, const char *target,
         if (!std::strncmp(arg, "--", STRLEN("--")))
             ++arg;
 
-        if (!std::strncmp(arg, COMMANDPREFIX, std::strlen(COMMANDPREFIX)))
+        if (!std::strncmp(arg, COMMANDPREFIX, STRLEN(COMMANDPREFIX)))
         {
-            arg += std::strlen(COMMANDPREFIX);
+            arg += STRLEN(COMMANDPREFIX);
 
             if (!std::strcmp(arg, "version") || !std::strcmp(arg, "v"))
             {
@@ -401,7 +393,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     if (!std::strcmp(arg, var))
                     {
                         const char *val = env[i].c_str();
-                        val += strlen(var) + 1; /* skip variable name */
+                        val += std::strlen(var) + 1; /* skip variable name */
 
                         std::cout << val << std::endl;
                         found = true;
@@ -448,6 +440,22 @@ static void parseargs(int argc, char **argv, const char *target,
                 cmdargs.verbose = true;
                 continue;
             }
+            else if (!std::strcmp(arg, "static-runtime"))
+            {
+                static constexpr const char* GCCRUNTIME = "-static-libgcc";
+                static constexpr const char* LIBSTDCXXRUNTIME = "-static-libstdc++";
+
+                if (cmdargs.iscxx)
+                {
+                    cmdargs.cxxflags.push_back(GCCRUNTIME);
+                    cmdargs.cxxflags.push_back(LIBSTDCXXRUNTIME);
+                }
+                else {
+                    cmdargs.cflags.push_back(GCCRUNTIME);
+                }
+
+                continue;
+            }
             else if (!std::strcmp(arg, "help") || !std::strcmp(arg, "h"))
             {
                 printheader();
@@ -465,6 +473,7 @@ static void parseargs(int argc, char **argv, const char *target,
 
                 printcmdhelp("env", "show all environment variables at once");
                 printcmdhelp("arch", "show target architecture");
+                printcmdhelp("static-runtime", "link runtime statically");
                 printcmdhelp("verbose", "enable verbose messages");
             }
             else {
@@ -480,16 +489,16 @@ static void parseargs(int argc, char **argv, const char *target,
 
 int main(int argc, char **argv)
 {
-    const char *target = nullptr;
+    std::string target;
     int targettype = -1;
     const char *e = std::strrchr(argv[0], '/');
     const char *p = nullptr;
 
-    bool iscpp = false;
-    string_vector cpppaths;
+    bool iscxx = false;
     string_vector stdpaths;
+    string_vector cxxpaths;
 
-    const char *compiler = nullptr;
+    std::string compiler;
 
     string_vector env;
 #ifdef HAVE_EXECVPE
@@ -501,10 +510,23 @@ int main(int argc, char **argv)
     char **cargs = nullptr;
     int cargsi = 0;
 
-    std::string compilerflags;
-    commandargs cmdargs;
+    string_vector cflags;
+    string_vector cxxflags;
+
+    commandargs cmdargs(stdpaths, cxxpaths, cflags, cxxflags,
+                        target, compiler, env, args, iscxx);
+
+    const char *cachefile = nullptr;
 
     timepoint("start");
+
+    if ((cachefile = getenv("WCLANG_LOAD_CACHE")))
+    {
+        timepoint("load cache");
+        loadcache(cachefile, cmdargs);
+        timepoint("load cache end");
+        goto cached;
+    }
 
     if (!e) e = argv[0];
     else ++e;
@@ -522,7 +544,7 @@ int main(int argc, char **argv)
      */
 
     p += STRLEN("clang");
-    if (!std::strcmp(p, "++")) iscpp = true;
+    if (!std::strcmp(p, "++")) iscxx = true;
     else if (*p) {
         std::cerr << "invalid invokation name: ++ (or nothing) should be "
                      "followed after clang (e.g: w32-clang++)" << std::endl;
@@ -535,12 +557,14 @@ int main(int argc, char **argv)
 
     if (!std::strncmp(e, "w32", STRLEN("w32")))
     {
-        target = findtarget32(stdpaths);
+        const char *t = findtarget32(stdpaths);
+        target = t ? t : "";
         targettype = TARGET_WIN32;
     }
     else if (!std::strncmp(e, "w64", STRLEN("w64")))
     {
-        target = findtarget64(stdpaths);
+        const char *t = findtarget64(stdpaths);
+        target = t ? t : "";
         targettype = TARGET_WIN64;
     }
 
@@ -549,7 +573,7 @@ int main(int argc, char **argv)
         std::cerr << "invalid target: " << e << std::endl;
         return 1;
     }
-    else if (!target)
+    else if (target.empty())
     {
         const char *type;
         std::string desc;
@@ -569,7 +593,7 @@ int main(int argc, char **argv)
     }
 
     /*
-     * Lookup C++ and C include paths
+     * Lookup C and C++ include paths
      */
 
     if (stdpaths.empty())
@@ -579,9 +603,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (iscpp)
+    if (iscxx)
     {
-        if (!findcppheaders(target, cpppaths, stdpaths))
+        if (!findcxxheaders(target.c_str(), cxxpaths, stdpaths))
         {
             std::cerr << "can not find " << target << " c++ headers" << std::endl;
             std::cerr << "make sure " << target << " c++ headers are installed on your system " << std::endl;
@@ -593,61 +617,20 @@ int main(int argc, char **argv)
      * Setup compiler command
      */
 
-    if (iscpp)
+    if (iscxx)
     {
         compiler = "clang++";
-        compilerflags = CXXFLAGS;
+
+        if (CXXFLAGS && *CXXFLAGS)
+            cxxflags.push_back(CXXFLAGS);
     }
-    else compiler = "clang";
-
-    /*
-     * Setup compiler Arguments
-     */
-
-    args.push_back(compiler);
-
-    if (!compilerflags.empty())
-        args.push_back(compilerflags);
-
-    args.push_back(CLANG_TARGET_OPT);
-    args.push_back(target);
-
-    for (const auto &dir : stdpaths)
+    else
     {
-        args.push_back("-isystem");
-        args.push_back(dir);
+        compiler = "clang";
+
+        if (CFLAGS && *CFLAGS)
+            cflags.push_back(CFLAGS);
     }
-
-    for (const auto &dir : cpppaths)
-    {
-        args.push_back("-isystem");
-        args.push_back(dir);
-    }
-
-    for (int i = 1; i < argc; ++i)
-    {
-        const char *arg = argv[i];
-        char buf[1+sizeof(COMMANDPREFIX)];
-
-        if (!std::strncmp(arg, COMMANDPREFIX, strlen(COMMANDPREFIX)))
-            continue;
-
-        *buf = '-';
-        std::strcpy(buf+1, COMMANDPREFIX);
-
-        if (!std::strncmp(arg, buf, strlen(buf)))
-            continue;
-
-        args.push_back(argv[i]);
-    }
-
-    cargs = new char* [args.size()+2];
-    cargs[args.size()] = nullptr;
-
-    for (const auto &opt : args)
-        cargs[cargsi++] = strdup(opt.c_str());
-
-    appendexetooutputname(cargs);
 
     /*
      * Setup environment variables
@@ -655,7 +638,7 @@ int main(int argc, char **argv)
 
     for (const char *var : ENVVARS)
     {
-        size_t len = strlen(var);
+        size_t len = std::strlen(var);
         char *buf = new char[1+len+1];
 
         buf[len+1] = '\0';
@@ -664,7 +647,7 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < len; ++i)
             buf[i] = tolower(var[i]);
 
-        envvar(env, var, target, --buf);
+        envvar(env, var, target.c_str(), --buf);
         delete[] buf;
     }
 
@@ -680,8 +663,10 @@ int main(int argc, char **argv)
         break;
     }
 
+    cached:;
+
 #ifdef HAVE_EXECVPE
-    cenv = new char* [env.size()+2];
+    cenv = new char* [env.size()+1];
     cenv[env.size()] = nullptr;
 
     for (const auto &var : env)
@@ -693,7 +678,65 @@ int main(int argc, char **argv)
      * when we know our environment already
      */
 
-    parseargs(argc, argv, target, cmdargs, env); /* may not return */
+    parseargs(argc, argv, target.c_str(), cmdargs, env); /* may not return */
+
+    /*
+     * Setup compiler Arguments
+     */
+
+    if (!cmdargs.cached)
+    {
+        args.push_back(compiler);
+
+        auto pushcompilerflags = [&](const string_vector &flags)
+        {
+            for (const auto &flag : flags)
+                args.push_back(flag);
+        };
+
+        pushcompilerflags(iscxx ? cxxflags : cflags);
+
+        args.push_back(CLANG_TARGET_OPT);
+        args.push_back(target);
+
+        for (const auto &dir : stdpaths)
+        {
+            args.push_back("-isystem");
+            args.push_back(dir);
+        }
+
+        for (const auto &dir : cxxpaths)
+        {
+            args.push_back("-isystem");
+            args.push_back(dir);
+        }
+    }
+
+    for (int i = 1; i < argc; ++i)
+    {
+        const char *arg = argv[i];
+        static constexpr size_t BUFSIZE = STRLEN(COMMANDPREFIX)+2;
+        char buf[BUFSIZE];
+
+        if (!std::strncmp(arg, COMMANDPREFIX, STRLEN(COMMANDPREFIX)))
+            continue;
+
+        *buf = '-';
+        std::memcpy(buf+1, COMMANDPREFIX, BUFSIZE-1);
+
+        if (!std::strncmp(arg, buf, BUFSIZE))
+            continue;
+
+        args.push_back(argv[i]);
+    }
+
+    cargs = new char* [args.size()+2];
+    cargs[args.size()] = nullptr;
+
+    for (const auto &opt : args)
+        cargs[cargsi++] = strdup(opt.c_str());
+
+    appendexetooutputname(cargs);
 
     /*
      * Execute command
@@ -709,16 +752,18 @@ int main(int argc, char **argv)
             command += *arg;
         }
 
-        verbosemsg("%", command.c_str());
-
         timepoint("end");
+        verbosemsg("%", command.c_str());
         printtimes();
     }
 
+    if (!cmdargs.cached && getenv("WCLANG_WRITE_CACHE"))
+        writecache(cmdargs);
+
 #ifdef HAVE_EXECVPE
-    execvpe(compiler, cargs, cenv);
+    execvpe(compiler.c_str(), cargs, cenv);
 #else
-    execvp(compiler, cargs);
+    execvp(compiler.c_str(), cargs);
 #endif
 
     std::cerr << "invoking compiler failed" << std::endl;

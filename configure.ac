@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT(wclang, 0.1, t.poechtrager@gmail.com)
+AC_INIT(wclang, 0.2, t.poechtrager@gmail.com)
 AC_CONFIG_SRCDIR([src/wclang.cpp])
 AC_CONFIG_HEADERS([config.h])
 
@@ -16,7 +16,7 @@ ifelse(m4_sysval, 0, , [
     echo "clang not installed?"
     exit 1])
 
-CXXFLAGS+="-DCLANG_TARGET_OPT="
+CXXFLAGS+=" -DCLANG_TARGET_OPT="
 CXXFLAGS+="\"\\\""
 CXXFLAGS+=CLANG_TARGET_OPT
 CXXFLAGS+="\"\\\""
@@ -38,7 +38,7 @@ AC_CHECK_HEADER_STDBOOL
 AC_TYPE_SIZE_T
 
 # Checks for library functions.
-AC_CHECK_FUNCS([strchr strdup strrchr])
+AC_CHECK_FUNCS([strchr strdup strrchr getpid])
 AC_CHECK_FUNCS([execvp gettimeofday], , exit 1)
 AC_CHECK_FUNCS([execvpe])
 

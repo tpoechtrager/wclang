@@ -9,6 +9,9 @@
 /* Define to 1 if you have the `execvpe' function. */
 #undef HAVE_EXECVPE
 
+/* Define to 1 if you have the `getpid' function. */
+#undef HAVE_GETPID
+
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 

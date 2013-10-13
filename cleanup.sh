@@ -21,3 +21,4 @@ rm *.*~
 rm src/*.*~
 rm -rf src/obj
 rm -rf bin
+rm src/wclang
