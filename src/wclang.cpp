@@ -244,7 +244,7 @@ void appendexetooutputname(char **cargs)
             filename = nullptr;
             pfix = nullptr;
 
-            *arg = (char*)std::realloc(*arg, std::strlen(*arg)+STRLEN(".exe")+1);
+            *arg = reinterpret_cast<char*>(std::realloc(*arg, std::strlen(*arg)+STRLEN(".exe")+1));
 
             if (!*arg)
             {
