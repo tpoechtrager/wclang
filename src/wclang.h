@@ -48,13 +48,14 @@ struct commandargs {
     string_vector &env;
     string_vector &args;
     bool &iscxx;
+    bool appendexe;
 
     commandargs(string_vector &stdpaths, string_vector &cxxpaths,
                 string_vector &cflags, string_vector &cxxflags,
                 std::string &target, std::string &compiler,
-                string_vector &env, string_vector &args, bool &iscxx) : 
+                string_vector &env, string_vector &args, bool &iscxx) :
                 cached(false), verbose(false), stdpaths(stdpaths),
                 cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags),
                 target(target), compiler(compiler), env(env), args(args),
-                iscxx(iscxx) {}
+                iscxx(iscxx), appendexe(false) {}
 };

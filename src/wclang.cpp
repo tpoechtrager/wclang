@@ -230,7 +230,7 @@ void appendexetooutputname(char **cargs)
             const char *filename = !std::strncmp(*arg, "-o", STRLEN("-o")) ? &(*arg)[2] : *arg;
             const char *pfix = std::strrchr(filename, '.');
 
-            if (pfix && (!std::strcmp(pfix, ".exe") || !std::strcmp(pfix, ".dll")))
+            if (pfix && (!std::strcmp(pfix, ".exe") || !std::strcmp(pfix, ".dll") || !std::strcmp(pfix, ".S")))
                 return;
 
             for (char **p = arg+1; *p; ++p)
@@ -456,6 +456,11 @@ static void parseargs(int argc, char **argv, const char *target,
 
                 continue;
             }
+            else if (!std::strcmp(arg, "append-exe"))
+            {
+                cmdargs.appendexe = true;
+                continue;
+            }
             else if (!std::strcmp(arg, "help") || !std::strcmp(arg, "h"))
             {
                 printheader();
@@ -474,6 +479,7 @@ static void parseargs(int argc, char **argv, const char *target,
                 printcmdhelp("env", "show all environment variables at once");
                 printcmdhelp("arch", "show target architecture");
                 printcmdhelp("static-runtime", "link runtime statically");
+                printcmdhelp("append-exe", "append .exe automatically to output filenames");
                 printcmdhelp("verbose", "enable verbose messages");
             }
             else {
@@ -736,7 +742,8 @@ int main(int argc, char **argv)
     for (const auto &opt : args)
         cargs[cargsi++] = strdup(opt.c_str());
 
-    appendexetooutputname(cargs);
+    if (cmdargs.appendexe)
+        appendexetooutputname(cargs);
 
     /*
      * Execute command
