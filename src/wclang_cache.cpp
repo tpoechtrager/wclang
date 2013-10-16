@@ -18,6 +18,7 @@
 #include <sstream>
 #include <random>
 #include <unistd.h>
+#include <assert.h>
 #include "wclang.h"
 #include "wclang_cache.h"
 
@@ -80,6 +81,7 @@ void writecache(commandargs &cmdargs)
     writestringvector(cmdargs.env);
     writestringvector(cmdargs.args);
     write(&cmdargs.iscxx, sizeof(cmdargs.iscxx));
+    write(&cmdargs.appendexe, sizeof(cmdargs.appendexe));
 
     if (!out.good())
     {
@@ -96,6 +98,7 @@ void writecache(commandargs &cmdargs)
 void loadcache(const char *filename, commandargs &cmdargs)
 {
     std::ifstream in(filename, std::ios::binary);
+    bool iscxx = cmdargs.iscxx;
 
     auto error = [&]()
     {
@@ -163,9 +166,11 @@ void loadcache(const char *filename, commandargs &cmdargs)
     loadstringvector(cmdargs.env);
     loadstringvector(cmdargs.args);
     read(&cmdargs.iscxx, sizeof(cmdargs.iscxx));
+    read(&cmdargs.appendexe, sizeof(cmdargs.appendexe));
 
     if (cmdargs.args.empty())
         error();
 
+    assert(iscxx == cmdargs.iscxx && "invalid cache file (CC and CXX cache mixed?)");
     cmdargs.cached = true;
 }

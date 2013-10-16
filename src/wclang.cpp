@@ -63,7 +63,7 @@ static constexpr const char* ENVVARS[] = {
 static constexpr char COMMANDPREFIX[] = "-wc-";
 
 /*
- * Paths where we should look for mingw c++ headers
+ * Paths where we should look for mingw C++ headers
  */
 
 static constexpr const char* CXXINCLUDEBASE[] = {
@@ -89,6 +89,7 @@ static constexpr const char* STDINCLUDEBASE[] = {
  */
 
 static constexpr const char* MINGWVERSIONS[] = {
+    "4.9",
     "4.8.1", "4.8",
     "4.7.3", "4.7.2", "4.7.1", "4.7",
     "4.6.4", "4.6.3", "4.6.2", "4.6.1", "4.6",
@@ -109,17 +110,28 @@ static bool findcxxheaders(const char *target, string_vector &cxxpaths,
     {
         if (!stat(dir.c_str(), &st) && S_ISDIR(st.st_mode))
         {
+            constexpr const char *HDRCHECKFILE = "/iostream";
+            std::string hdrcheck;
+            bool hdrcheckok = false;
+
             if (!base.empty() && v)
             {
                 base += std::string(v);
+                hdrcheck = base + std::string(HDRCHECKFILE);
+                hdrcheckok = stat(hdrcheck.c_str(), &st) == 0;
                 cxxpaths.push_back(base);
             }
+
+            hdrcheck = dir + std::string(HDRCHECKFILE);
+
+            if (!hdrcheckok && stat(hdrcheck.c_str(), &st))
+                return false;
 
             cxxpaths.push_back(dir);
 
 #ifdef _DEBUG
             for (const auto &dir : cxxpaths)
-                std::cout << "found c++ include dir: " << dir << std::endl;
+                std::cout << "found C++ include dir: " << dir << std::endl;
 #endif
 
             return true;
@@ -136,7 +148,8 @@ static bool findcxxheaders(const char *target, string_vector &cxxpaths,
         for (const char *v : MINGWVERSIONS)
         {
             dir = stddir + std::string("/c++/") + std::string(v);
-            if (trydir(dir, nullptr)) return true;
+            base = dir + std::string("/");
+            if (trydir(dir, target)) return true;
         }
     }
 
@@ -171,17 +184,22 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
     std::string dir;
     struct stat st;
 
-    for (const char *stdinclude : STDINCLUDEBASE)
+    auto checkdir = [&](const char *stdinclude) -> bool
     {
         auto trydir = [&](const std::string &dir) -> bool
         {
             if (!stat(dir.c_str(), &st) && S_ISDIR(st.st_mode))
             {
+                std::string filecheck = dir + std::string("/stdlib.h");
+
+                if (stat(filecheck.c_str(), &st))
+                    return false;
+
                 stdpaths.push_back(dir);
 
 #ifdef _DEBUG
                 for (const auto &dir : stdpaths)
-                    std::cout << "found c include dir: " << dir << std::endl;
+                    std::cout << "found C include dir: " << dir << std::endl;
 #endif
 
                 return true;
@@ -197,7 +215,38 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
         dir  = std::string(stdinclude) + std::string("/");
         dir += std::string(target) + std::string("/sys-root/mingw/include");
         if (trydir(dir)) return true;
+
+        return false;
+    };
+
+#if 0
+#ifdef MINGW_PATH
+    if (STRLEN(MINGW_PATH) > 0)
+    {
+        const char *p = MINGW_PATH;
+        std::string path;
+
+        do
+        {
+            if (*p == ':') p++;
+    
+            while (*p && *p != ':')
+                path += *p++;
+
+            if (path.find_last_of("/bin") != std::string::npos)
+                path.resize(path.size()-STRLEN("/bin"));
+
+            if (checkdir(path.c_str()))
+                return true;
+
+            path.clear();
+        } while (*p);
     }
+#endif //MINGW_PATH
+#endif
+
+    for (const char *stdinclude : STDINCLUDEBASE)
+        if (checkdir(stdinclude)) return true;
 
     return false;
 }
@@ -526,14 +575,6 @@ int main(int argc, char **argv)
 
     timepoint("start");
 
-    if ((cachefile = getenv("WCLANG_LOAD_CACHE")))
-    {
-        timepoint("load cache");
-        loadcache(cachefile, cmdargs);
-        timepoint("load cache end");
-        goto cached;
-    }
-
     if (!e) e = argv[0];
     else ++e;
 
@@ -555,6 +596,19 @@ int main(int argc, char **argv)
         std::cerr << "invalid invokation name: ++ (or nothing) should be "
                      "followed after clang (e.g: w32-clang++)" << std::endl;
         return 1;
+    }
+
+    /*
+     * Load cache when requested
+     */
+
+    if ((cachefile = getenv(iscxx ? "WCLANG_LOAD_CXX_CACHE" :
+                                    "WCLANG_LOAD_CC_CACHE")))
+    {
+        timepoint("load cache");
+        loadcache(cachefile, cmdargs);
+        timepoint("load cache end");
+        goto cached;
     }
 
     /*
@@ -591,10 +645,12 @@ int main(int argc, char **argv)
             default: type = nullptr;
         }
 
-        desc = std::string("mingw (") + std::string(type) + std::string(")");
+        desc = std::string("mingw-w64 (") + std::string(type) + std::string(")");
 
         std::cerr << "can not find " << desc << " installation" << std::endl;
         std::cerr << "make sure " << desc << " is installed on your system" << std::endl;
+        std::cerr << "if you have moved your mingw installation, "
+                     "then re-run the installation process!" << std::endl;
         return 1;
     }
 
@@ -604,8 +660,8 @@ int main(int argc, char **argv)
 
     if (stdpaths.empty())
     {
-        std::cerr << "can not find " << target << " c headers" << std::endl;
-        std::cerr << "make sure " << target << " c headers are installed on your system " << std::endl;
+        std::cerr << "can not find " << target << " C headers" << std::endl;
+        std::cerr << "make sure " << target << " C headers are installed on your system " << std::endl;
         return 1;
     }
 
@@ -613,8 +669,8 @@ int main(int argc, char **argv)
     {
         if (!findcxxheaders(target.c_str(), cxxpaths, stdpaths))
         {
-            std::cerr << "can not find " << target << " c++ headers" << std::endl;
-            std::cerr << "make sure " << target << " c++ headers are installed on your system " << std::endl;
+            std::cerr << "can not find " << target << " C++ headers" << std::endl;
+            std::cerr << "make sure " << target << " C++ headers are installed on your system " << std::endl;
             return 1;
         }
     }
@@ -764,8 +820,15 @@ int main(int argc, char **argv)
         printtimes();
     }
 
-    if (!cmdargs.cached && getenv("WCLANG_WRITE_CACHE"))
-        writecache(cmdargs);
+    /*
+     * Write cache when requested
+     */
+
+    if (!cmdargs.cached && getenv(iscxx ? "WCLANG_WRITE_CXX_CACHE" :
+                                          "WCLANG_WRITE_CC_CACHE"))
+    {
+        writecache(cmdargs); /* no return */
+    }
 
 #ifdef HAVE_EXECVPE
     execvpe(compiler.c_str(), cargs, cenv);

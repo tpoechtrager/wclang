@@ -1,24 +1,24 @@
 #!/bin/sh
-rm config.status
-rm configure
-rm *stamp*
-rm install-sh
-rm depcomp
-rm Makefile.in
-rm Makefile
-rm missing
-rm aclocal.m4
-rm -rf autom4te.cache
-rm config.h
-rm *.log
-rm *.scan
-rm src/*.save
-rm src/*.o
-rm src/Makefile.in
-rm src/Makefile
-rm -rf src/.deps
-rm *.*~
-rm src/*.*~
-rm -rf src/obj
-rm -rf bin
-rm src/wclang
+rm -f config.status
+rm -f configure
+rm -f *stamp*
+rm -f install-sh
+rm -f depcomp
+rm -f Makefile.in
+rm -f Makefile
+rm -f missing
+rm -f aclocal.m4
+rm -f -rf autom4te.cache
+rm -f config.h
+rm -f *.log
+rm -f *.scan
+rm -f src/*.save
+rm -f src/*.o
+rm -f src/Makefile.in
+rm -f src/Makefile
+rm -f -rf src/.deps
+rm -f *.*~
+rm -f src/*.*~
+rm -f -rf src/obj
+rm -f -rf bin
+rm -f src/wclang
