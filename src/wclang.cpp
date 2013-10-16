@@ -219,7 +219,6 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
         return false;
     };
 
-#if 0
 #ifdef MINGW_PATH
     if (STRLEN(MINGW_PATH) > 0)
     {
@@ -229,7 +228,7 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
         do
         {
             if (*p == ':') p++;
-    
+
             while (*p && *p != ':')
                 path += *p++;
 
@@ -243,7 +242,6 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
         } while (*p);
     }
 #endif //MINGW_PATH
-#endif
 
     for (const char *stdinclude : STDINCLUDEBASE)
         if (checkdir(stdinclude)) return true;
