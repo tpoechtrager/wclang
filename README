@@ -1,6 +1,6 @@
 Wclang is a tool which helps you to cross compile source code easily with clang on linux for windows.
 Wclang is basically a wrapper for clang, which allows you to directly target windows.
-Wclang detects the target and headers automaticly and adds them to the clang invocation command.
+Wclang detects the target and headers automatically and adds them to the clang invocation command.
 
 After the installation you will have "w32-clang", "w32-clang++", "w64-clang" and "w64-clang++" available as "compiler".
 
