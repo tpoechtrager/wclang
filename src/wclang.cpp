@@ -22,6 +22,8 @@
 #include <cstring>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
+#include <assert.h>
 #include "wclang.h"
 #include "wclang_time.h"
 #include "wclang_cache.h"
@@ -312,6 +314,45 @@ void appendexetooutputname(char **cargs)
  * Tools
  */
 
+static std::string &realpath(const char *file, std::string &result)
+{
+    char *PATH = getenv("PATH");
+    const char *p = PATH;
+    std::string sfile;
+    struct stat st;
+
+    assert(PATH && "this shouldn't happen");
+
+    do
+    {
+        if (*p == ':') p++;
+
+        while (*p && *p != ':')
+            sfile += *p++;
+
+        sfile += std::string("/") + std::string(file);
+
+        if (!stat(sfile.c_str(), &st))
+            break;
+
+        sfile.clear();
+    } while (*p);
+
+#ifdef HAVE_READLINK
+    if (!sfile.empty())
+    {
+        char buf[PATH_MAX+1];
+        ssize_t len;
+
+        if ((len = readlink(sfile.c_str(), buf, PATH_MAX)) != -1)
+            result.assign(buf, len);
+    }
+#endif
+
+    return result;
+
+}
+
 template<class... T>
 static void envvar(string_vector &env, const char *varname,
                    const char *val, T... values)
@@ -369,7 +410,15 @@ static void verbosemsg(const char *str, T value, Args... args)
 {
     std::ostringstream buf;
     std::string msg = fmtstring(buf, str, value, std::forward<Args>(args)...);
-    std::cerr << PACKAGE_NAME << " verbose: " << msg << std::endl;
+    std::cerr << PACKAGE_NAME << ": verbose: " << msg << std::endl;
+}
+
+template<typename T = const char*, typename... Args>
+static void warn(const char *str, T value, Args... args)
+{
+    std::ostringstream buf;
+    std::string warnmsg = fmtstring(buf, str, value, std::forward<Args>(args)...);
+    std::cerr << PACKAGE_NAME << ": warning: " << warnmsg << std::endl;
 }
 
 static time_vector times;
@@ -401,6 +450,21 @@ static void parseargs(int argc, char **argv, const char *target,
     for (int i = 0; i < argc; ++i)
     {
         char *arg = argv[i];
+
+        if (!std::strncmp(arg, "-o", STRLEN("-o")))
+        {
+            cmdargs.islinkstep = true;
+            continue;
+        }
+        else if (!std::strcmp(arg, "-mwindows") && !cmdargs.usemingwlinker)
+        {
+            /*
+             * Clang doesn't support -mwindows (yet)
+             */
+
+            cmdargs.usemingwlinker = 2;
+            continue;
+        }
 
         /*
          * Everything with COMMANDPREFIX belongs to us
@@ -508,6 +572,11 @@ static void parseargs(int argc, char **argv, const char *target,
                 cmdargs.appendexe = true;
                 continue;
             }
+            else if (!std::strcmp(arg, "use-mingw-linker"))
+            {
+                cmdargs.usemingwlinker = 1;
+                continue;
+            }
             else if (!std::strcmp(arg, "help") || !std::strcmp(arg, "h"))
             {
                 printheader();
@@ -527,6 +596,7 @@ static void parseargs(int argc, char **argv, const char *target,
                 printcmdhelp("arch", "show target architecture");
                 printcmdhelp("static-runtime", "link runtime statically");
                 printcmdhelp("append-exe", "append .exe automatically to output filenames");
+                printcmdhelp("use-mingw-linker", "link with mingw");
                 printcmdhelp("verbose", "enable verbose messages");
             }
             else {
@@ -579,7 +649,7 @@ int main(int argc, char **argv)
     p = std::strchr(e, '-');
     if (!p++ || std::strncmp(p, "clang", STRLEN("clang")))
     {
-        std::cerr << "invalid invokation name: clang should be followed "
+        std::cerr << "invalid invocation name: clang should be followed "
                      "after target (e.g: w32-clang)" << std::endl;
         return 1;
     }
@@ -591,7 +661,7 @@ int main(int argc, char **argv)
     p += STRLEN("clang");
     if (!std::strcmp(p, "++")) iscxx = true;
     else if (*p) {
-        std::cerr << "invalid invokation name: ++ (or nothing) should be "
+        std::cerr << "invalid invocation name: ++ (or nothing) should be "
                      "followed after clang (e.g: w32-clang++)" << std::endl;
         return 1;
     }
@@ -744,6 +814,16 @@ int main(int argc, char **argv)
      * Setup compiler Arguments
      */
 
+    if (cmdargs.islinkstep && cmdargs.usemingwlinker)
+    {
+        compiler = target + (iscxx ? "-g++" : "-gcc");
+
+        if (cmdargs.usemingwlinker == 2)
+            warn("linking with % because of unimplemented -mwindows", compiler);
+
+        realpath(compiler.c_str(), compiler);
+    }
+
     if (!cmdargs.cached)
     {
         args.push_back(compiler);
@@ -756,19 +836,22 @@ int main(int argc, char **argv)
 
         pushcompilerflags(iscxx ? cxxflags : cflags);
 
-        args.push_back(CLANG_TARGET_OPT);
-        args.push_back(target);
-
-        for (const auto &dir : stdpaths)
+        if (!cmdargs.islinkstep || !cmdargs.usemingwlinker)
         {
-            args.push_back("-isystem");
-            args.push_back(dir);
-        }
+            args.push_back(CLANG_TARGET_OPT);
+            args.push_back(target);
 
-        for (const auto &dir : cxxpaths)
-        {
-            args.push_back("-isystem");
-            args.push_back(dir);
+            for (const auto &dir : stdpaths)
+            {
+                args.push_back("-isystem");
+                args.push_back(dir);
+            }
+
+            for (const auto &dir : cxxpaths)
+            {
+                args.push_back("-isystem");
+                args.push_back(dir);
+            }
         }
     }
 
@@ -786,6 +869,12 @@ int main(int argc, char **argv)
 
         if (!std::strncmp(arg, buf, BUFSIZE))
             continue;
+
+        if (cmdargs.islinkstep && cmdargs.usemingwlinker)
+        {
+            if (!std::strncmp(arg, "-Qunused", STRLEN("-Qunused")))
+                continue;
+        }
 
         args.push_back(argv[i]);
     }
