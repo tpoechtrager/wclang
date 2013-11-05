@@ -33,7 +33,7 @@ check_mingw_path()
             MINGW_WRONG_PATH=1
 
             echo ""
-            echo "$MINGW_GCC found but is not in the same directory as clang the binary!"
+            echo "$MINGW_GCC found but is not in the same directory as the clang binary!"
             echo "Please run 'ln -sf $MINGW_PATH/$1* $CLANG_PATH/' to fix this issue."
             echo ""
         fi
