@@ -1,4 +1,4 @@
-AM_CXXFLAGS=-pedantic -Wall -Wextra
+AM_CXXFLAGS=-pedantic -Wall -Wextra -O3
 
 bin_PROGRAMS = wclang
 wclang_SOURCES = wclang.cpp wclang_time.cpp wclang_cache.cpp

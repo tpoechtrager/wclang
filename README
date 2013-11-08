@@ -19,9 +19,8 @@ INSTALLATION:
 
 UPDATING:
 
- If you are updating a previous installed wclang installation,
- then don't forget to re-run ./bootstrap.sh, otherwise ./configure
- will most likely fail.
+ If you are updating a previous wclang installation, then don't forget
+ to re-run ./bootstrap.sh, otherwise ./configure will most likely fail.
 
 EXAMPLES:
 
