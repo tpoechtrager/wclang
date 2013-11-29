@@ -49,6 +49,7 @@ struct commandargs {
     string_vector &args;
     bool &iscxx;
     bool appendexe;
+    bool iscompilestep;
     bool islinkstep;
     int usemingwlinker;
 
@@ -59,6 +60,6 @@ struct commandargs {
                 cached(false), verbose(false), stdpaths(stdpaths),
                 cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags),
                 target(target), compiler(compiler), env(env), args(args),
-                iscxx(iscxx), appendexe(false), islinkstep(false),
-                usemingwlinker(0) {}
+                iscxx(iscxx), appendexe(false), iscompilestep(false), 
+                islinkstep(false), usemingwlinker(0) {}
 };

@@ -357,11 +357,10 @@ template<class... T>
 static void envvar(string_vector &env, const char *varname,
                    const char *val, T... values)
 {
-    constexpr size_t vc = sizeof...(T) + 1;
-    const char *vals[vc] = { val, values... };
+    const char *vals[] = { val, values... };
 
     std::string var = varname + std::string("=");
-    for (size_t i = 0; i < vc; ++i) var += vals[i];
+    for (auto &val : vals) var += val;
 
     env.push_back(var);
 }
@@ -442,6 +441,10 @@ static void printtimes()
 static void parseargs(int argc, char **argv, const char *target,
                       commandargs &cmdargs, const string_vector &env)
 {
+    typedef void (*dcfun)(commandargs &cmdargs, char *arg);
+    typedef std::tuple<dcfun, char*> dc_tuple;
+    std::vector<dc_tuple> delayedcommands;
+
     auto printheader = []()
     {
         std::cout << PACKAGE_NAME << ", Version: " << VERSION << std::endl;
@@ -454,6 +457,11 @@ static void parseargs(int argc, char **argv, const char *target,
         if (!std::strncmp(arg, "-o", STRLEN("-o")))
         {
             cmdargs.islinkstep = true;
+            continue;
+        }
+        else if (!std::strcmp(arg, "-c") || !std::strcmp(arg, "-S"))
+        {
+            cmdargs.iscompilestep = true;
             continue;
         }
         else if (!std::strcmp(arg, "-mwindows") && !cmdargs.usemingwlinker)
@@ -556,15 +564,33 @@ static void parseargs(int argc, char **argv, const char *target,
                 static constexpr const char* GCCRUNTIME = "-static-libgcc";
                 static constexpr const char* LIBSTDCXXRUNTIME = "-static-libstdc++";
 
-                if (cmdargs.iscxx)
+                /*
+                 * Postpone execution to later
+                 * We don't know yet, if it is the link step or not
+                 */
+                auto staticruntime = [](commandargs &cmdargs, char *arg)
                 {
-                    cmdargs.cxxflags.push_back(GCCRUNTIME);
-                    cmdargs.cxxflags.push_back(LIBSTDCXXRUNTIME);
-                }
-                else {
-                    cmdargs.cflags.push_back(GCCRUNTIME);
-                }
+                    /*
+                     * Avoid "argument unused during compilation: '...'"
+                     */
+                    if (!cmdargs.islinkstep)
+                    {
+                        if (cmdargs.verbose)
+                            verbosemsg("ignoring %", arg);
+                        return;
+                    }
 
+                    if (cmdargs.iscxx)
+                    {
+                        cmdargs.cxxflags.push_back(GCCRUNTIME);
+                        cmdargs.cxxflags.push_back(LIBSTDCXXRUNTIME);
+                    }
+                    else {
+                        cmdargs.cflags.push_back(GCCRUNTIME);
+                    }
+                };
+
+                delayedcommands.push_back(dc_tuple(staticruntime, arg-STRLEN(COMMANDPREFIX)));
                 continue;
             }
             else if (!std::strcmp(arg, "append-exe"))
@@ -574,7 +600,19 @@ static void parseargs(int argc, char **argv, const char *target,
             }
             else if (!std::strcmp(arg, "use-mingw-linker"))
             {
-                cmdargs.usemingwlinker = 1;
+                auto usemingwlinker = [](commandargs &cmdargs, char *arg)
+                {
+                    if (!cmdargs.islinkstep)
+                    {
+                        if (cmdargs.verbose)
+                            verbosemsg("ignoring %", arg);
+                        return;
+                    }
+
+                    cmdargs.usemingwlinker = 1;
+                };
+
+                delayedcommands.push_back(dc_tuple(usemingwlinker, arg-STRLEN(COMMANDPREFIX)));
                 continue;
             }
             else if (!std::strcmp(arg, "help") || !std::strcmp(arg, "h"))
@@ -607,6 +645,23 @@ static void parseargs(int argc, char **argv, const char *target,
 
             std::exit(EXIT_SUCCESS);
         }
+    }
+
+    if (cmdargs.islinkstep && cmdargs.iscompilestep)
+    {
+        /* w32-clang file.c -c -o file.o */
+        cmdargs.islinkstep = false;
+    }
+    else if (!cmdargs.islinkstep && !cmdargs.iscompilestep)
+    {
+        /* w32-clang file.c */
+        cmdargs.islinkstep = true;
+    }
+
+    for (auto dc : delayedcommands)
+    {
+        auto fun = std::get<0>(dc);
+        fun(cmdargs, std::get<1>(dc));
     }
 }
 
@@ -894,16 +949,23 @@ int main(int argc, char **argv)
 
     if (cmdargs.verbose)
     {
-        std::string command;
+        std::string commandin, commandout;
+
+        for (int i = 0; i < argc; ++i)
+        {
+            if (i) commandin += " ";
+            commandin += argv[i];
+        }
 
         for (char **arg = cargs; *arg; ++arg)
         {
-            if (arg != cargs) command += " ";
-            command += *arg;
+            if (arg != cargs) commandout += " ";
+            commandout += *arg;
         }
 
         timepoint("end");
-        verbosemsg("%", command.c_str());
+        verbosemsg("command in: %", commandin);
+        verbosemsg("command out: %", commandout);
         printtimes();
     }
 
