@@ -91,21 +91,22 @@ static constexpr const char* STDINCLUDEBASE[] = {
  */
 
 static constexpr const char* MINGWVERSIONS[] = {
-    "4.9",
-    "4.8.2", "4.8.1", "4.8",
-    "4.7.3", "4.7.2", "4.7.1", "4.7",
-    "4.6.4", "4.6.3", "4.6.2", "4.6.1", "4.6",
-    "4.5.4", "4.5.3", "4.5.2", "4.5.1", "4.5",
+    "4.9.0", "4.9",
+    "4.8.2", "4.8.1", "4.8.0", "4.8",
+    "4.7.3", "4.7.2", "4.7.1", "4.7.0", "4.7",
+    "4.6.4", "4.6.3", "4.6.2", "4.6.1", "4.6.0", "4.6",
+    "4.5.4", "4.5.3", "4.5.2", "4.5.1", "4.5.0", "4.5",
     "4.4.7", "4.4.6", "4.4.5", "4.4.4", "4.4.3",
-    "4.4.2", "4.4.1", "4.4"
+    "4.4.2", "4.4.1", "4.4.0", "4.4"
 };
 
-static bool findcxxheaders(const char *target, string_vector &cxxpaths,
-                           const string_vector &stdpaths)
+static bool findcxxheaders(const char *target, commandargs &cmdargs)
 {
     std::string base;
     std::string dir;
     struct stat st;
+    auto &cxxpaths = cmdargs.cxxpaths;
+    const auto &stdpaths = cmdargs.stdpaths;
     std::string mingw = std::string("/") + std::string(target);
 
     auto trydir = [&](const std::string &dir, const char *v) -> bool
@@ -181,10 +182,12 @@ static bool findcxxheaders(const char *target, string_vector &cxxpaths,
     return false;
 }
 
-static bool findstdheader(const char *target, string_vector &stdpaths)
+static bool findstdheader(const char *target, commandargs &cmdargs)
 {
     std::string dir;
     struct stat st;
+    auto &stdpaths = cmdargs.stdpaths;
+    const char *mingwpath = getenv("MINGW_PATH");
 
     auto checkdir = [&](const char *stdinclude) -> bool
     {
@@ -221,10 +224,8 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
         return false;
     };
 
-#ifdef MINGW_PATH
-    if (STRLEN(MINGW_PATH) > 0)
+    auto checkpath = [&](const char *p) -> bool
     {
-        const char *p = MINGW_PATH;
         std::string path;
 
         do
@@ -242,8 +243,17 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
 
             path.clear();
         } while (*p);
-    }
-#endif //MINGW_PATH
+
+        return false;
+    };
+
+    if (mingwpath && *mingwpath)
+        return checkpath(mingwpath);
+
+#ifdef MINGW_PATH
+    if (*MINGW_PATH && checkpath(MINGW_PATH))
+        return true;
+#endif
 
     for (const char *stdinclude : STDINCLUDEBASE)
         if (checkdir(stdinclude)) return true;
@@ -251,18 +261,18 @@ static bool findstdheader(const char *target, string_vector &stdpaths)
     return false;
 }
 
-static const char *findtarget32(string_vector &stdpaths)
+static const char *findtarget32(commandargs &cmdargs)
 {
     for (const char *target : TARGET32)
-        if (findstdheader(target, stdpaths)) return target;
+        if (findstdheader(target, cmdargs)) return target;
 
     return nullptr;
 }
 
-static const char *findtarget64(string_vector &stdpaths)
+static const char *findtarget64(commandargs &cmdargs)
 {
     for (const char *target : TARGET64)
-        if (findstdheader(target, stdpaths)) return target;
+        if (findstdheader(target, cmdargs)) return target;
 
     return nullptr;
 }
@@ -418,6 +428,11 @@ static void warn(const char *str, T value, Args... args)
     std::ostringstream buf;
     std::string warnmsg = fmtstring(buf, str, value, std::forward<Args>(args)...);
     std::cerr << PACKAGE_NAME << ": warning: " << warnmsg << std::endl;
+}
+
+static void warn(const char *str)
+{
+    warn("%", str);
 }
 
 static time_vector times;
@@ -675,19 +690,11 @@ int main(int argc, char **argv)
     bool iscxx = false;
     string_vector stdpaths;
     string_vector cxxpaths;
-
     std::string compiler;
-
     string_vector env;
-#ifdef HAVE_EXECVPE
-    char **cenv = nullptr;
-    int cenvi = 0;
-#endif
-
     string_vector args;
     char **cargs = nullptr;
     int cargsi = 0;
-
     string_vector cflags;
     string_vector cxxflags;
 
@@ -738,15 +745,17 @@ int main(int argc, char **argv)
      * Check if we should target win32 or win64...
      */
 
+    find_target_and_headers:;
+
     if (!std::strncmp(e, "w32", STRLEN("w32")))
     {
-        const char *t = findtarget32(stdpaths);
+        const char *t = findtarget32(cmdargs);
         target = t ? t : "";
         targettype = TARGET_WIN32;
     }
     else if (!std::strncmp(e, "w64", STRLEN("w64")))
     {
-        const char *t = findtarget64(stdpaths);
+        const char *t = findtarget64(cmdargs);
         target = t ? t : "";
         targettype = TARGET_WIN64;
     }
@@ -761,6 +770,15 @@ int main(int argc, char **argv)
         const char *type;
         std::string desc;
 
+        if (getenv("MINGW_PATH"))
+        {
+            warn("MINGW_PATH env variable does not point to any "
+                 "valid mingw installation for the current target!");
+
+            unsetenv("MINGW_PATH");
+            goto find_target_and_headers;
+        }
+
         switch (targettype)
         {
             case TARGET_WIN32: type = "32 bit"; break;
@@ -770,7 +788,7 @@ int main(int argc, char **argv)
 
         desc = std::string("mingw-w64 (") + std::string(type) + std::string(")");
 
-        std::cerr << "can not find " << desc << " installation" << std::endl;
+        std::cerr << "cannot find " << desc << " installation" << std::endl;
         std::cerr << "make sure " << desc << " is installed on your system" << std::endl;
         std::cerr << "if you have moved your mingw installation, "
                      "then re-run the installation process!" << std::endl;
@@ -783,14 +801,14 @@ int main(int argc, char **argv)
 
     if (stdpaths.empty())
     {
-        std::cerr << "can not find " << target << " C headers" << std::endl;
+        std::cerr << "cannot find " << target << " C headers" << std::endl;
         std::cerr << "make sure " << target << " C headers are installed on your system " << std::endl;
         return 1;
     }
 
     if (iscxx)
     {
-        if (!findcxxheaders(target.c_str(), cxxpaths, stdpaths))
+        if (!findcxxheaders(target.c_str(), cmdargs))
         {
             std::cerr << "can not find " << target << " C++ headers" << std::endl;
             std::cerr << "make sure " << target << " C++ headers are installed on your system " << std::endl;
@@ -849,14 +867,6 @@ int main(int argc, char **argv)
     }
 
     cached:;
-
-#ifdef HAVE_EXECVPE
-    cenv = new char* [env.size()+1];
-    cenv[env.size()] = nullptr;
-
-    for (const auto &var : env)
-        cenv[cenvi++] = strdup(var.c_str());
-#endif
 
     /*
      * Parse command arguments late,
@@ -979,11 +989,7 @@ int main(int argc, char **argv)
         writecache(cmdargs); /* no return */
     }
 
-#ifdef HAVE_EXECVPE
-    execvpe(compiler.c_str(), cargs, cenv);
-#else
     execvp(compiler.c_str(), cargs);
-#endif
 
     std::cerr << "invoking compiler failed" << std::endl;
     std::cerr << "clang not installed?" << std::endl;
