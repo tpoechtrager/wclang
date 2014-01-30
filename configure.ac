@@ -3,6 +3,9 @@
 
 AC_PREREQ([2.69])
 AC_INIT(wclang, 0.3, t.poechtrager@gmail.com)
+
+AC_CONFIG_MACRO_DIR([m4])
+
 AC_CONFIG_SRCDIR([src/wclang.cpp])
 AC_CONFIG_HEADERS([config.h])
 
@@ -22,12 +25,12 @@ ifelse(m4_sysval, 0, , [
 CXXFLAGS+=" -DCLANG_TARGET_OPT="
 CXXFLAGS+="\"\\\""
 CXXFLAGS+=CLANG_TARGET_OPT
-CXXFLAGS+="\"\\\""
+CXXFLAGS+="\\\"\""
 
 CXXFLAGS+=" -DMINGW_PATH="
 CXXFLAGS+="\"\\\""
 CXXFLAGS+=CHECK_MINGW
-CXXFLAGS+="\"\\\""
+CXXFLAGS+="\\\"\""
 
 AC_PROG_CXX
 AC_PROG_INSTALL

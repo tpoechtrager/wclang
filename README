@@ -32,7 +32,7 @@ LISTING AVAILABLE PARAMETERS:
 
 KNOWN TO WORK ON:
  ubuntu, debian (wheezy*), mint, arch, fedora
- others dists may work too, but have not been tested
+ other dists may work too, but have not been tested
 
 
 * wheezy: important: clang-3.0 coming with wheezy is too old
