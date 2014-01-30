@@ -36,6 +36,15 @@ static_assert(STRLEN("test string") == 11, "");
 typedef unsigned long long ullong;
 typedef std::vector<std::string> string_vector;
 
+enum optimize {
+    LEVEL_0,
+    LEVEL_1,
+    LEVEL_3,
+    FAST,
+    SPEED,
+    SIZE,
+};
+
 struct commandargs {
     bool cached;
     bool verbose;
@@ -51,6 +60,7 @@ struct commandargs {
     bool appendexe;
     bool iscompilestep;
     bool islinkstep;
+    int optimizationlevel;
     int usemingwlinker;
 
     commandargs(string_vector &stdpaths, string_vector &cxxpaths,
@@ -61,5 +71,5 @@ struct commandargs {
                 cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags),
                 target(target), compiler(compiler), env(env), args(args),
                 iscxx(iscxx), appendexe(false), iscompilestep(false), 
-                islinkstep(false), usemingwlinker(0) {}
+                islinkstep(false), optimizationlevel(0), usemingwlinker(0) {}
 };

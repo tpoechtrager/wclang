@@ -479,6 +479,23 @@ static void parseargs(int argc, char **argv, const char *target,
             cmdargs.iscompilestep = true;
             continue;
         }
+        else if (!std::strncmp(arg, "-O", STRLEN("-O")))
+        {
+            int &level = cmdargs.optimizationlevel;
+
+            arg += STRLEN("-O");
+            
+            if (*arg == 's') level = optimize::SPEED;
+            else if (*arg == 'z') level = optimize::SIZE;
+            else if (!strcmp(arg, "fast")) level = optimize::FAST;
+            else {
+                level = std::atoi(arg);
+                if (level > optimize::LEVEL_3) level = optimize::LEVEL_3;
+                else if (level < optimize::LEVEL_0) level = optimize::LEVEL_0;
+            }
+
+            continue;
+        }
         else if (!std::strcmp(arg, "-mwindows") && !cmdargs.usemingwlinker)
         {
             /*
@@ -887,6 +904,24 @@ int main(int argc, char **argv)
             warn("linking with % because of unimplemented -mwindows", compiler);
 
         realpath(compiler.c_str(), compiler);
+    }
+
+    if ((targettype == TARGET_WIN64 && iscxx) &&
+        (cmdargs.iscompilestep || cmdargs.islinkstep) &&
+        (cmdargs.optimizationlevel >= optimize::LEVEL_1))
+    {
+        /*
+         * Workaround for a bug in the MinGW math.h header,
+         * fabs() and friends getting miscompiled without
+         * defining __CRT__NO_INLINE, because there is
+         * something wrong with their inline definition.
+         */
+        char *p;
+        if (!(p = getenv("WCLANG_NO_CRT_INLINE_WORKAROUND")) || *p == '0')
+        {
+            // warn("defining __CRT__NO_INLINE to workaround bugs in the mingw math.h header");
+            cxxflags.push_back("-D__CRT__NO_INLINE");
+        }
     }
 
     if (!cmdargs.cached)
