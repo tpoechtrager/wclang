@@ -485,8 +485,8 @@ static void parseargs(int argc, char **argv, const char *target,
 
             arg += STRLEN("-O");
             
-            if (*arg == 's') level = optimize::SPEED;
-            else if (*arg == 'z') level = optimize::SIZE;
+            if (*arg == 's') level = optimize::SIZE_1;
+            else if (*arg == 'z') level = optimize::SIZE_2;
             else if (!strcmp(arg, "fast")) level = optimize::FAST;
             else {
                 level = std::atoi(arg);

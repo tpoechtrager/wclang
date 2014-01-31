@@ -41,8 +41,8 @@ enum optimize {
     LEVEL_1,
     LEVEL_3,
     FAST,
-    SPEED,
-    SIZE,
+    SIZE_1,
+    SIZE_2,
 };
 
 struct commandargs {
