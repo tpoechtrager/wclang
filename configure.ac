@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT(wclang, 0.3, t.poechtrager@gmail.com)
+AC_INIT(wclang, 0.4, t.poechtrager@gmail.com)
 
 AC_CONFIG_MACRO_DIR([m4])
 

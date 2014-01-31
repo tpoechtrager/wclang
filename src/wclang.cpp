@@ -277,6 +277,40 @@ static const char *findtarget64(commandargs &cmdargs)
     return nullptr;
 }
 
+static bool findheaders(commandargs &cmdargs, const std::string &target)
+{
+    return findstdheader(target.c_str(), cmdargs);
+}
+
+static const char *findtriple(const char *name, int &targettype)
+{
+    const char *p = std::strstr(name, "-clang");
+    size_t len = p-name;
+
+    if (!p)
+        return nullptr;
+
+    for (const char *target : TARGET32)
+    {
+        if (!std::strncmp(target, name, len))
+        {
+            targettype = TARGET_WIN32;
+            return target;
+        }
+    }
+
+    for (const char *target : TARGET64)
+    {
+        if (!std::strncmp(target, name, len))
+        {
+            targettype = TARGET_WIN64;
+            return target;
+        }
+    }
+
+    return nullptr;
+}
+
 void appendexetooutputname(char **cargs)
 {
     for (char **arg = cargs; *arg; ++arg)
@@ -738,7 +772,7 @@ int main(int argc, char **argv)
     if (!e) e = argv[0];
     else ++e;
 
-    p = std::strchr(e, '-');
+    p = std::strrchr(e, '-');
     if (!p++ || std::strncmp(p, "clang", STRLEN("clang")))
     {
         std::cerr << "invalid invocation name: clang should be followed "
@@ -777,17 +811,25 @@ int main(int argc, char **argv)
 
     find_target_and_headers:;
 
-    if (!std::strncmp(e, "w32", STRLEN("w32")))
+    if (const char *triple = findtriple(e, targettype))
     {
-        const char *t = findtarget32(cmdargs);
-        target = t ? t : "";
-        targettype = TARGET_WIN32;
+        target = triple;
+        findheaders(cmdargs, target);
     }
-    else if (!std::strncmp(e, "w64", STRLEN("w64")))
+    else
     {
-        const char *t = findtarget64(cmdargs);
-        target = t ? t : "";
-        targettype = TARGET_WIN64;
+        if (!std::strncmp(e, "w32", STRLEN("w32")))
+        {
+            const char *t = findtarget32(cmdargs);
+            target = t ? t : "";
+            targettype = TARGET_WIN32;
+        }
+        else if (!std::strncmp(e, "w64", STRLEN("w64")))
+        {
+            const char *t = findtarget64(cmdargs);
+            target = t ? t : "";
+            targettype = TARGET_WIN64;
+        }
     }
 
     if (targettype == -1)

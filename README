@@ -27,6 +27,12 @@ EXAMPLES:
  w32-clang++ hello-world.cpp -o hello-world.exe && wine hello-world
  CC=w32-clang ./configure --host=`w32-clang -wc-target`
 
+ i686-w64-mingw32-clang++ hello-world.cpp -o hello-world.exe && wine hello-world
+ CC=i686-w64-mingw32-clang ./configure --host=i686-w64-mingw32
+
+ x86_64-w64-mingw32-clang++ hello-world.cpp -o hello-world.exe && wine hello-world
+ CC=x86_64-w64-mingw32-clang ./configure --host=x86-64-w64-mingw32
+
 LISTING AVAILABLE PARAMETERS:
  w32-clang -wc-help
 
