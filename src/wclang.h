@@ -42,7 +42,7 @@ enum optimize {
     LEVEL_3,
     FAST,
     SIZE_1,
-    SIZE_2,
+    SIZE_2
 };
 
 struct commandargs {
@@ -60,6 +60,7 @@ struct commandargs {
     bool appendexe;
     bool iscompilestep;
     bool islinkstep;
+    int exceptions;
     int optimizationlevel;
     int usemingwlinker;
 
@@ -71,5 +72,6 @@ struct commandargs {
                 cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags),
                 target(target), compiler(compiler), env(env), args(args),
                 iscxx(iscxx), appendexe(false), iscompilestep(false), 
-                islinkstep(false), optimizationlevel(0), usemingwlinker(0) {}
-};
+                islinkstep(false), exceptions(-1), optimizationlevel(0),
+                usemingwlinker(0) {}
+} __attribute__ ((aligned (8)));

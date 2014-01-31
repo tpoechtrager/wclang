@@ -50,10 +50,10 @@ static constexpr const char* TARGET64[] = {
 };
 
 /*
- * Remove -fno-exceptions once exceptions are supported
+ * Additional C/C++ flags
  */
-static constexpr const char* CXXFLAGS = "-fno-exceptions";
-static constexpr const char* CFLAGS = "";
+static constexpr char CXXFLAGS[] = "";
+static constexpr char CFLAGS[] = "";
 
 static constexpr const char* ENVVARS[] = {
     "AR", "AS", "CPP", "DLLTOOL", "DLLWRAP",
@@ -505,6 +505,19 @@ static void parseargs(int argc, char **argv, const char *target,
             cmdargs.usemingwlinker = 2;
             continue;
         }
+        else if (cmdargs.iscxx)
+        {
+            if (!std::strcmp(arg, "-fexceptions"))
+            {
+                cmdargs.exceptions = 1;
+                continue;
+            }
+            else if (!std::strcmp(arg, "-fno-exceptions"))
+            {
+                cmdargs.exceptions = 0;
+                continue;
+            }
+        }
 
         /*
          * Everything with COMMANDPREFIX belongs to us
@@ -841,14 +854,14 @@ int main(int argc, char **argv)
     {
         compiler = "clang++";
 
-        if (CXXFLAGS && *CXXFLAGS)
+        if (STRLEN(CXXFLAGS) > 0)
             cxxflags.push_back(CXXFLAGS);
     }
     else
     {
         compiler = "clang";
 
-        if (CFLAGS && *CFLAGS)
+        if (STRLEN(CFLAGS) > 0)
             cflags.push_back(CFLAGS);
     }
 
@@ -906,21 +919,42 @@ int main(int argc, char **argv)
         realpath(compiler.c_str(), compiler);
     }
 
-    if ((targettype == TARGET_WIN64 && iscxx) &&
-        (cmdargs.iscompilestep || cmdargs.islinkstep) &&
-        (cmdargs.optimizationlevel >= optimize::LEVEL_1))
+    if (iscxx)
     {
-        /*
-         * Workaround for a bug in the MinGW math.h header,
-         * fabs() and friends getting miscompiled without
-         * defining __CRT__NO_INLINE, because there is
-         * something wrong with their inline definition.
-         */
-        char *p;
-        if (!(p = getenv("WCLANG_NO_CRT_INLINE_WORKAROUND")) || *p == '0')
+        if ((targettype == TARGET_WIN64) &&
+            (cmdargs.iscompilestep || cmdargs.islinkstep) &&
+            (cmdargs.optimizationlevel >= optimize::LEVEL_1))
         {
-            // warn("defining __CRT__NO_INLINE to workaround bugs in the mingw math.h header");
-            cxxflags.push_back("-D__CRT__NO_INLINE");
+            /*
+             * Workaround for a bug in the MinGW math.h header,
+             * fabs() and friends getting miscompiled without
+             * defining __CRT__NO_INLINE, because there is
+             * something wrong with their inline definition.
+             */
+            char *p;
+            if (!(p = getenv("WCLANG_NO_CRT_INLINE_WORKAROUND")) || *p == '0')
+            {
+                // warn("defining __CRT__NO_INLINE to workaround bugs in the mingw math.h header");
+                cxxflags.push_back("-D__CRT__NO_INLINE");
+            }
+        }
+
+        if (cmdargs.exceptions != 0)
+        {
+            char *p;
+            if (!(p = getenv("WCLANG_FORCE_CXX_EXCEPTIONS")) || *p == '0')
+            {
+                if (cmdargs.exceptions == 1)
+                {
+                    warn("-fexceptions will be replaced with -fno-exceptions: exceptions are not supported (yet)");
+                    std::cerr << "set WCLANG_FORCE_CXX_EXCEPTIONS to 1 (env. variable) to force C++ exceptions" << std::endl;
+                }
+
+                cxxflags.push_back("-fno-exceptions");
+            }
+            else {
+                cmdargs.exceptions = -1;
+            }
         }
     }
 
@@ -962,6 +996,9 @@ int main(int argc, char **argv)
         char buf[BUFSIZE];
 
         if (!std::strncmp(arg, COMMANDPREFIX, STRLEN(COMMANDPREFIX)))
+            continue;
+
+        if (cmdargs.exceptions == 1 && !std::strcmp(arg, "-fexceptions"))
             continue;
 
         *buf = '-';
