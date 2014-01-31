@@ -404,7 +404,9 @@ static void envvar(string_vector &env, const char *varname,
     const char *vals[] = { val, values... };
 
     std::string var = varname + std::string("=");
-    for (auto &val : vals) var += val;
+
+    /* g++ 4.7.2 doesn't like auto in this loop */
+    for (const char *val : vals) var += val;
 
     env.push_back(var);
 }
@@ -518,7 +520,7 @@ static void parseargs(int argc, char **argv, const char *target,
             int &level = cmdargs.optimizationlevel;
 
             arg += STRLEN("-O");
-            
+
             if (*arg == 's') level = optimize::SIZE_1;
             else if (*arg == 'z') level = optimize::SIZE_2;
             else if (!strcmp(arg, "fast")) level = optimize::FAST;
