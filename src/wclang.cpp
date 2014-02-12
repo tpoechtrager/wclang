@@ -541,6 +541,15 @@ static void parseargs(int argc, char **argv, const char *target,
             cmdargs.usemingwlinker = 2;
             continue;
         }
+        else if (!std::strcmp(arg, "-mdll") && !cmdargs.usemingwlinker)
+        {
+            /*
+             * Clang doesn't support -mdll (yet)
+             */
+
+            cmdargs.usemingwlinker = 3;
+            continue;
+        }
         else if (!std::strncmp(arg, "-x", STRLEN("-x")))
         {
             const char *p = arg+STRLEN("-x");
@@ -985,8 +994,12 @@ int main(int argc, char **argv)
     {
         compiler = target + (iscxx ? "-g++" : "-gcc");
 
-        if (cmdargs.usemingwlinker == 2)
-            warn("linking with % because of unimplemented -mwindows", compiler);
+        if (cmdargs.usemingwlinker > 1)
+        {
+            constexpr const char *desc[] = { "-mwindows", "-mdll" };
+            size_t index = cmdargs.usemingwlinker-2;
+            warn("linking with % because of unimplemented %", compiler, desc[index]);
+        }
 
         realpath(compiler.c_str(), compiler);
     }
