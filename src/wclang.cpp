@@ -27,8 +27,8 @@
 #include <cstring>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <limits.h>
-#include <assert.h>
+#include <climits>
+#include <cassert>
 #include "wclang.h"
 #include "wclang_time.h"
 #include "wclang_cache.h"
@@ -86,9 +86,18 @@ static constexpr const char* CXXINCLUDEBASE[] = {
  */
 
 static constexpr const char* STDINCLUDEBASE[] = {
-    "/usr/local",
     "/usr",
+    "/usr/local",
     "/opt"
+};
+
+/*
+ * Supported clang versions
+ */
+
+constexpr const char* CLANGVERSIONS[] = {
+    "3.5", "3.4", "3.3", "3.2",
+    "3.1", "3.0", "2.9", "2.8"
 };
 
 /*
@@ -182,6 +191,46 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
             dir = base + std::string(v) + std::string("/include/c++");
             if (trydir(dir, v)) return true;
         }
+    }
+
+    return false;
+}
+
+static bool findintrinheaders(commandargs &cmdargs)
+{
+    std::string clangbin;
+    std::stringstream dir;
+    struct stat st;
+    auto &intrinpaths = cmdargs.intrinpaths;
+
+    getpathofcommand("clang", clangbin);
+
+    if (clangbin.empty())
+        return false;
+
+    auto checkdir = [&](const std::string &dir) -> bool
+    {
+        if (!stat(dir.c_str(), &st) && S_ISDIR(st.st_mode))
+        {
+            intrinpaths.push_back(dir);
+            return true;
+        }
+
+        return false;
+    };
+
+    for (auto *v : CLANGVERSIONS)
+    {
+        dir << clangbin << "/../lib/clang/" << v << "/include";
+        if (checkdir(dir.str())) return true;
+        dir.str(std::string());
+    }
+
+    for (auto *v : CLANGVERSIONS)
+    {
+        dir << clangbin << "/../include/clang/" << v << "/include";
+        if (checkdir(dir.str())) return true;
+        dir.str(std::string());
     }
 
     return false;
@@ -363,7 +412,7 @@ void appendexetooutputname(char **cargs)
  * Tools
  */
 
-static std::string &realpath(const char *file, std::string &result)
+std::string &realpath(const char *file, std::string &result, realpathcmp cmp)
 {
     char *PATH = getenv("PATH");
     const char *p = PATH;
@@ -381,7 +430,7 @@ static std::string &realpath(const char *file, std::string &result)
 
         sfile += std::string("/") + std::string(file);
 
-        if (!stat(sfile.c_str(), &st))
+        if (!stat(sfile.c_str(), &st) && (!cmp || cmp(sfile.c_str(), st)))
             break;
 
         sfile.clear();
@@ -398,8 +447,26 @@ static std::string &realpath(const char *file, std::string &result)
     }
 #endif
 
+    result.swap(sfile);
     return result;
+}
 
+std::string &getpathofcommand(const char *command, std::string &result)
+{
+    realpath(command, result, [](const char *f, const struct stat&){
+        return !access(f, F_OK|X_OK);
+    });
+
+    const size_t len = strlen(command)+1;
+
+    if (result.size() < len)
+    {
+        result.clear();
+        return result;
+    }
+
+    result.resize(result.size()-len);
+    return result;
 }
 
 template<class... T>
@@ -468,7 +535,7 @@ static void warn(const char *str, T value, Args... args)
 {
     std::ostringstream buf;
     std::string warnmsg = fmtstring(buf, str, value, std::forward<Args>(args)...);
-    std::cerr << PACKAGE_NAME << ": warning: " << warnmsg << std::endl;
+    std::cerr << KBLD PACKAGE_NAME << ": warning: " KNRM << warnmsg << std::endl;
 }
 
 static void warn(const char *str)
@@ -639,6 +706,8 @@ static void parseargs(int argc, char **argv, const char *target,
 
         arg += STRLEN(COMMANDPREFIX);
 
+        #define INVALID_ARGUMENT else goto invalid_argument
+
         switch (*arg)
         {
             case 'a':
@@ -659,7 +728,7 @@ static void parseargs(int argc, char **argv, const char *target,
                 }
                 else if (!std::strcmp(arg, "append-exe")) {
                     cmdargs.appendexe = true;
-                }
+                } INVALID_ARGUMENT;
                 break;
             }
             case 'e':
@@ -710,7 +779,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     for (const auto &v : env) std::cout << v << " ";
                     std::cout << std::endl;
                     std::exit(EXIT_SUCCESS);
-                }
+                } INVALID_ARGUMENT;
                 break;
             }
             case 'h':
@@ -735,10 +804,20 @@ static void parseargs(int argc, char **argv, const char *target,
                     printcmdhelp("static-runtime", "link runtime statically");
                     printcmdhelp("append-exe", "append .exe automatically to output filenames");
                     printcmdhelp("use-mingw-linker", "link with mingw");
+                    printcmdhelp("no-intrin", "do not use clang intrinsics");
                     printcmdhelp("verbose", "enable verbose messages");
 
                     std::exit(EXIT_SUCCESS);
-                }
+                } INVALID_ARGUMENT;
+                break;
+            }
+            case 'n':
+            {
+                if (!std::strncmp(arg, "no-intrin", STRLEN("no-intrin")))
+                {
+                    cmdargs.nointrinsics = true;
+                    continue;
+                } INVALID_ARGUMENT;
                 break;
             }
             case 's':
@@ -775,7 +854,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     };
 
                     delayedcommands.push_back(dc_tuple(staticruntime, arg-STRLEN(COMMANDPREFIX)));
-                }
+                } INVALID_ARGUMENT;
                 break;
             }
             case 't':
@@ -784,7 +863,7 @@ static void parseargs(int argc, char **argv, const char *target,
                 {
                     std::cout << target << std::endl;
                     std::exit(EXIT_SUCCESS);
-                }
+                } INVALID_ARGUMENT;
                 break;
             }
             case 'u':
@@ -805,7 +884,7 @@ static void parseargs(int argc, char **argv, const char *target,
 
                     delayedcommands.push_back(dc_tuple(usemingwlinker, arg-STRLEN(COMMANDPREFIX)));
                     continue;
-                }
+                } INVALID_ARGUMENT;
                 break;
             }
             case 'v':
@@ -820,16 +899,19 @@ static void parseargs(int argc, char **argv, const char *target,
                 }
                 else if (!std::strcmp(arg, "verbose")) {
                     cmdargs.verbose = true;
-                }
+                } INVALID_ARGUMENT;
                 break;
             }
             default:
             {
+                invalid_argument:;
                 printheader();
                 std::cerr << "invalid argument: " << COMMANDPREFIX << arg << std::endl;
                 std::exit(EXIT_FAILURE);
             }
         }
+
+        #undef INVALID_ARGUMENT
     }
 
     if (cmdargs.islinkstep && cmdargs.iscompilestep)
@@ -858,6 +940,7 @@ int main(int argc, char **argv)
     const char *p = nullptr;
 
     bool iscxx = false;
+    string_vector intrinpaths;
     string_vector stdpaths;
     string_vector cxxpaths;
     std::string compiler;
@@ -868,8 +951,8 @@ int main(int argc, char **argv)
     string_vector cflags;
     string_vector cxxflags;
 
-    commandargs cmdargs(stdpaths, cxxpaths, cflags, cxxflags,
-                        target, compiler, env, args, iscxx);
+    commandargs cmdargs(intrinpaths, stdpaths, cxxpaths, cflags,
+                        cxxflags, target, compiler, env, args, iscxx);
 
     const char *cachefile = nullptr;
 
@@ -1120,17 +1203,27 @@ int main(int argc, char **argv)
             args.push_back(CLANG_TARGET_OPT);
             args.push_back(target);
 
-            for (const auto &dir : stdpaths)
-            {
-                args.push_back("-isystem");
-                args.push_back(dir);
-            }
+            /*
+             * Prevent clang from including /usr/include in
+             * case a file is not found in our directories
+             */
+            args.push_back("-nostdinc");
 
-            for (const auto &dir : cxxpaths)
+            auto pushdirs = [&](const string_vector &paths)
             {
-                args.push_back("-isystem");
-                args.push_back(dir);
-            }
+                for (const auto &dir : paths)
+                {
+                    args.push_back("-isystem");
+                    args.push_back(dir);
+                }
+            };
+
+            if (!cmdargs.nointrinsics && !findintrinheaders(cmdargs))
+               warn("cannot find clang intrinsics directory");
+
+            pushdirs(intrinpaths);
+            pushdirs(stdpaths);
+            pushdirs(cxxpaths);
         }
     }
 

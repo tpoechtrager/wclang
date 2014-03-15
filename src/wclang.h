@@ -36,6 +36,14 @@ static_assert(STRLEN("test string") == 11, "");
 typedef unsigned long long ullong;
 typedef std::vector<std::string> string_vector;
 
+#define KNRM "\x1B[0m"
+#define KBLD "\x1B[1m"
+
+typedef bool (* realpathcmp)(const char *file, const struct stat &st);
+
+std::string &realpath(const char *file, std::string &result, realpathcmp cmp = nullptr);
+std::string &getpathofcommand(const char *bin, std::string &result);
+
 enum optimize {
     LEVEL_0,
     LEVEL_1,
@@ -48,6 +56,7 @@ enum optimize {
 struct commandargs {
     bool cached;
     bool verbose;
+    string_vector &intrinpaths;
     string_vector &stdpaths;
     string_vector &cxxpaths;
     string_vector &cflags;
@@ -60,18 +69,20 @@ struct commandargs {
     bool appendexe;
     bool iscompilestep;
     bool islinkstep;
+    bool nointrinsics;
     int exceptions;
     int optimizationlevel;
     int usemingwlinker;
 
-    commandargs(string_vector &stdpaths, string_vector &cxxpaths,
-                string_vector &cflags, string_vector &cxxflags,
-                std::string &target, std::string &compiler,
-                string_vector &env, string_vector &args, bool &iscxx) :
-                cached(false), verbose(false), stdpaths(stdpaths),
-                cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags),
-                target(target), compiler(compiler), env(env), args(args),
-                iscxx(iscxx), appendexe(false), iscompilestep(false), 
-                islinkstep(false), exceptions(-1), optimizationlevel(0),
-                usemingwlinker(0) {}
+    commandargs(string_vector &intrinpaths, string_vector &stdpaths,
+                string_vector &cxxpaths, string_vector &cflags,
+                string_vector &cxxflags, std::string &target,
+                std::string &compiler, string_vector &env,
+                string_vector &args, bool &iscxx) :
+                cached(false), verbose(false), intrinpaths(intrinpaths),
+                stdpaths(stdpaths), cxxpaths(cxxpaths), cflags(cflags),
+                cxxflags(cxxflags), target(target), compiler(compiler),
+                env(env), args(args), iscxx(iscxx), appendexe(false),
+                iscompilestep(false), islinkstep(false), nointrinsics(false),
+                exceptions(-1), optimizationlevel(0), usemingwlinker(0) {}
 } __attribute__ ((aligned (8)));

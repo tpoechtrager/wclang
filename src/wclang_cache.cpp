@@ -23,7 +23,7 @@
 #include <sstream>
 #include <random>
 #include <unistd.h>
-#include <assert.h>
+#include <cassert>
 #include "wclang.h"
 #include "wclang_cache.h"
 
