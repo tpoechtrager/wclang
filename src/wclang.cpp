@@ -1,18 +1,23 @@
-/***************************************************************************
- *   wclang                                                                *
- *   Copyright (C) 2013 by Thomas Poechtrager                              *
- *   t.poechtrager@gmail.com                                               *
- *                                                                         *
- *   All rights reserved. This program and the accompanying materials      *
- *   are made available under the terms of the GNU Lesser General Public   *
- *   License (LGPL) version 2.1 which accompanies this distribution,       *
- *   and is available at  http://www.gnu.org/licenses/lgpl-2.1.html        *
- *                                                                         *
- *   This library is distributed in the hope that it will be useful,       *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU      *
- *   Lesser General Public License for more details.                       *
- ***************************************************************************/
+/***********************************************************************
+ *  wclang                                                             *
+ *  Copyright (C) 2013, 2014 by Thomas Poechtrager                     *
+ *  t.poechtrager@gmail.com                                            *
+ *                                                                     *
+ *  This program is free software; you can redistribute it and/or      *
+ *  modify it under the terms of the GNU General Public License        *
+ *  as published by the Free Software Foundation; either version 2     *
+ *  of the License, or (at your option) any later version.             *
+ *                                                                     *
+ *  This program is distributed in the hope that it will be useful,    *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of     *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the      *
+ *  GNU General Public License for more details.                       *
+ *                                                                     *
+ *  You should have received a copy of the GNU General Public License  *
+ *  along with this program; if not, write to the Free Software        *
+ *  Foundation, Inc.,                                                  *
+ *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.      *
+ ***********************************************************************/
 
 #include <iostream>
 #include <fstream>
@@ -505,91 +510,121 @@ static void parseargs(int argc, char **argv, const char *target,
     {
         char *arg = argv[i];
 
-        if (!std::strncmp(arg, "-o", STRLEN("-o")))
-        {
-            cmdargs.islinkstep = true;
+        if (*arg != '-')
             continue;
-        }
-        else if (!std::strcmp(arg, "-c") || !std::strcmp(arg, "-S"))
+
+        switch (*(arg+1))
         {
-            cmdargs.iscompilestep = true;
-            continue;
-        }
-        else if (!std::strncmp(arg, "-O", STRLEN("-O")))
-        {
-            int &level = cmdargs.optimizationlevel;
-
-            arg += STRLEN("-O");
-
-            if (*arg == 's') level = optimize::SIZE_1;
-            else if (*arg == 'z') level = optimize::SIZE_2;
-            else if (!strcmp(arg, "fast")) level = optimize::FAST;
-            else {
-                level = std::atoi(arg);
-                if (level > optimize::LEVEL_3) level = optimize::LEVEL_3;
-                else if (level < optimize::LEVEL_0) level = optimize::LEVEL_0;
-            }
-
-            continue;
-        }
-        else if (!std::strcmp(arg, "-mwindows") && !cmdargs.usemingwlinker)
-        {
-            /*
-             * Clang doesn't support -mwindows (yet)
-             */
-
-            cmdargs.usemingwlinker = 2;
-            continue;
-        }
-        else if (!std::strcmp(arg, "-mdll") && !cmdargs.usemingwlinker)
-        {
-            /*
-             * Clang doesn't support -mdll (yet)
-             */
-
-            cmdargs.usemingwlinker = 3;
-            continue;
-        }
-        else if (!std::strncmp(arg, "-x", STRLEN("-x")))
-        {
-            const char *p = arg+STRLEN("-x");
-
-            if (!*p)
+            case 'c':
             {
-                p = argv[++i];
-
-                if (i >= argc)
-                    ERROR("missing argument for '-x'");
-            }
-
-            auto checkcxx = [&]()
-            {
-                if (!cmdargs.iscxx)
+                if (!std::strcmp(arg, "-c") || !std::strcmp(arg, "-S"))
                 {
-                    cmdargs.iscxx = true;
-                    findcxxheaders(target, cmdargs);
+                    cmdargs.iscompilestep = true;
+                    continue;
                 }
-            };
+                break;
+            }
+            case 'f':
+            {
+                if (cmdargs.iscxx)
+                {
+                    if (!std::strcmp(arg, "-fexceptions"))
+                    {
+                        cmdargs.exceptions = 1;
+                        continue;
+                    }
+                    else if (!std::strcmp(arg, "-fno-exceptions"))
+                    {
+                        cmdargs.exceptions = 0;
+                        continue;
+                    }
+                }
+                break;
+            }
+            case 'm':
+            {
+                if (!std::strcmp(arg, "-mwindows") && !cmdargs.usemingwlinker)
+                {
+                    /*
+                     * Clang doesn't support -mwindows (yet)
+                     */
 
-            if (!std::strcmp(p, "c")) cmdargs.iscxx = false;
-            else if (!std::strcmp(p, "c-header")) cmdargs.iscxx = false;
-            else if (!std::strcmp(p, "c++")) checkcxx();
-            else if (!std::strcmp(p, "c++-header")) checkcxx();
-            else ERROR("given language not supported");
-            continue;
-        }
-        else if (cmdargs.iscxx)
-        {
-            if (!std::strcmp(arg, "-fexceptions"))
-            {
-                cmdargs.exceptions = 1;
-                continue;
+                    cmdargs.usemingwlinker = 2;
+                    continue;
+                }
+                else if (!std::strcmp(arg, "-mdll") && !cmdargs.usemingwlinker)
+                {
+                    /*
+                     * Clang doesn't support -mdll (yet)
+                     */
+
+                    cmdargs.usemingwlinker = 3;
+                    continue;
+                }
+                break;
             }
-            else if (!std::strcmp(arg, "-fno-exceptions"))
+            case 'o':
             {
-                cmdargs.exceptions = 0;
-                continue;
+                if (!std::strncmp(arg, "-o", STRLEN("-o")))
+                {
+                    cmdargs.islinkstep = true;
+                    continue;
+                }
+                break;
             }
+            case 'x':
+            {
+                if (!std::strncmp(arg, "-x", STRLEN("-x")))
+                {
+                    const char *p = arg+STRLEN("-x");
+
+                    if (!*p)
+                    {
+                        p = argv[++i];
+
+                        if (i >= argc)
+                            ERROR("missing argument for '-x'");
+                    }
+
+                    auto checkcxx = [&]()
+                    {
+                        if (!cmdargs.iscxx)
+                        {
+                            cmdargs.iscxx = true;
+                            findcxxheaders(target, cmdargs);
+                        }
+                    };
+
+                    if (!std::strcmp(p, "c")) cmdargs.iscxx = false;
+                    else if (!std::strcmp(p, "c-header")) cmdargs.iscxx = false;
+                    else if (!std::strcmp(p, "c++")) checkcxx();
+                    else if (!std::strcmp(p, "c++-header")) checkcxx();
+                    else ERROR("given language not supported");
+                    continue;
+                }
+                break;
+            }
+            case 'O':
+            {
+                if (!std::strncmp(arg, "-O", STRLEN("-O")))
+                {
+                    int &level = cmdargs.optimizationlevel;
+
+                    arg += STRLEN("-O");
+
+                    if (*arg == 's') level = optimize::SIZE_1;
+                    else if (*arg == 'z') level = optimize::SIZE_2;
+                    else if (!strcmp(arg, "fast")) level = optimize::FAST;
+                    else {
+                        level = std::atoi(arg);
+                        if (level > optimize::LEVEL_3) level = optimize::LEVEL_3;
+                        else if (level < optimize::LEVEL_0) level = optimize::LEVEL_0;
+                    }
+                    continue;
+                }
+                break;
+            }
+            break;
         }
 
         /*
@@ -599,169 +634,201 @@ static void parseargs(int argc, char **argv, const char *target,
         if (!std::strncmp(arg, "--", STRLEN("--")))
             ++arg;
 
-        if (!std::strncmp(arg, COMMANDPREFIX, STRLEN(COMMANDPREFIX)))
+        if (std::strncmp(arg, COMMANDPREFIX, STRLEN(COMMANDPREFIX)))
+            continue;
+
+        arg += STRLEN(COMMANDPREFIX);
+
+        switch (*arg)
         {
-            arg += STRLEN(COMMANDPREFIX);
-
-            if (!std::strcmp(arg, "version") || !std::strcmp(arg, "v"))
+            case 'a':
             {
-                printheader();
-                std::cout << "Copyright (C) 2013 Thomas Poechtrager." << std::endl;
-                std::cout << "License: LGPL v2.1" << std::endl;
-                std::cout << "Bugs / Wishes: " << PACKAGE_BUGREPORT << std::endl;
-            }
-            else if (!std::strcmp(arg, "target") || !std::strcmp(arg, "t"))
-            {
-                std::cout << target << std::endl;
-            }
-            else if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
-                     !std::strncmp(arg, "e-", STRLEN("e-")))
-            {
-                bool found = false;
-
-                while (*++arg != '-');
-                ++arg;
-
-                for (char *p = arg; *p; ++p) *p = toupper(*p);
-
-                size_t i = 0;
-                for (const char *var : ENVVARS)
+                if (!std::strcmp(arg, "arch") || !std::strcmp(arg, "a"))
                 {
-                    if (!std::strcmp(arg, var))
+                    const char *end = std::strchr(target, '-');
+
+                    if (!end)
                     {
-                        const char *val = env[i].c_str();
-                        val += std::strlen(var) + 1; /* skip variable name */
-
-                        std::cout << val << std::endl;
-                        found = true;
-
-                        break;
+                        std::cerr << "internal error (could not determine arch)" << std::endl;
+                        std::exit(EXIT_FAILURE);
                     }
 
-                    if (found) break;
-
-                    ++i;
+                    std::string arch(target, end-target);
+                    std::cout << arch << std::endl;
+                    std::exit(EXIT_SUCCESS);
                 }
-
-                if (!found)
+                else if (!std::strcmp(arg, "append-exe")) {
+                    cmdargs.appendexe = true;
+                }
+                break;
+            }
+            case 'e':
+            {
+                if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
+                    !std::strncmp(arg, "e-", STRLEN("e-")))
                 {
-                    std::cerr << "environment variable " << arg << " not found" << std::endl;
-                    std::cerr << "available environment variables: " << std::endl;
+                    bool found = false;
 
+                    while (*++arg != '-');
+                    ++arg;
+
+                    for (char *p = arg; *p; ++p) *p = toupper(*p);
+
+                    size_t i = 0;
                     for (const char *var : ENVVARS)
-                        std::cerr << " " << var << std::endl;
+                    {
+                        if (!std::strcmp(arg, var))
+                        {
+                            const char *val = env[i].c_str();
+                            val += std::strlen(var) + 1; /* skip variable name */
 
-                    std::exit(EXIT_FAILURE);
+                            std::cout << val << std::endl;
+                            found = true;
+
+                            break;
+                        }
+
+                        if (found) break;
+
+                        ++i;
+                    }
+
+                    if (!found)
+                    {
+                        std::cerr << "environment variable " << arg << " not found" << std::endl;
+                        std::cerr << "available environment variables: " << std::endl;
+
+                        for (const char *var : ENVVARS)
+                            std::cerr << " " << var << std::endl;
+
+                        std::exit(EXIT_FAILURE);
+                    }
+                    std::exit(EXIT_SUCCESS);
                 }
-            }
-            else if (!std::strcmp(arg, "env") || !std::strcmp(arg, "e"))
-            {
-                for (const auto &v : env) std::cout << v << " ";
-                std::cout << std::endl;
-            }
-            else if (!std::strcmp(arg, "arch") || !std::strcmp(arg, "a"))
-            {
-                const char *end = std::strchr(target, '-');
-
-                if (!end)
+                else if (!std::strcmp(arg, "env") || !std::strcmp(arg, "e"))
                 {
-                    std::cerr << "internal error (could not determine arch)" << std::endl;
-                    std::exit(EXIT_FAILURE);
+                    for (const auto &v : env) std::cout << v << " ";
+                    std::cout << std::endl;
+                    std::exit(EXIT_SUCCESS);
                 }
-
-                std::string arch(target, end-target);
-                std::cout << arch << std::endl;
+                break;
             }
-            else if (!std::strcmp(arg, "verbose"))
+            case 'h':
             {
-                cmdargs.verbose = true;
-                continue;
-            }
-            else if (!std::strcmp(arg, "static-runtime"))
-            {
-                static constexpr const char* GCCRUNTIME = "-static-libgcc";
-                static constexpr const char* LIBSTDCXXRUNTIME = "-static-libstdc++";
-
-                /*
-                 * Postpone execution to later
-                 * We don't know yet, if it is the link step or not
-                 */
-                auto staticruntime = [](commandargs &cmdargs, char *arg)
+                if (!std::strcmp(arg, "help") || !std::strcmp(arg, "h"))
                 {
+                    printheader();
+
+                    auto printcmdhelp = [&](const char *cmd, const std::string &text)
+                    {
+                        std::cout << " " << COMMANDPREFIX << cmd << ": " << text << std::endl;
+                    };
+
+                    printcmdhelp("version", "show version");
+                    printcmdhelp("target", "show target");
+
+                    printcmdhelp("env-<var>", std::string("show environment variable  [e.g: ") +
+                                 std::string(COMMANDPREFIX) + std::string("env-ld]"));
+
+                    printcmdhelp("env", "show all environment variables at once");
+                    printcmdhelp("arch", "show target architecture");
+                    printcmdhelp("static-runtime", "link runtime statically");
+                    printcmdhelp("append-exe", "append .exe automatically to output filenames");
+                    printcmdhelp("use-mingw-linker", "link with mingw");
+                    printcmdhelp("verbose", "enable verbose messages");
+
+                    std::exit(EXIT_SUCCESS);
+                }
+                break;
+            }
+            case 's':
+            {
+                if (!std::strcmp(arg, "static-runtime"))
+                {
+                    static constexpr const char* GCCRUNTIME = "-static-libgcc";
+                    static constexpr const char* LIBSTDCXXRUNTIME = "-static-libstdc++";
+
                     /*
-                     * Avoid "argument unused during compilation: '...'"
+                     * Postpone execution to later
+                     * We don't know yet, if it is the link step or not
                      */
-                    if (!cmdargs.islinkstep)
+                    auto staticruntime = [](commandargs &cmdargs, char *arg)
                     {
-                        if (cmdargs.verbose)
-                            verbosemsg("ignoring %", arg);
-                        return;
-                    }
+                        /*
+                         * Avoid "argument unused during compilation: '...'"
+                         */
+                        if (!cmdargs.islinkstep)
+                        {
+                            if (cmdargs.verbose)
+                                verbosemsg("ignoring %", arg);
+                            return;
+                        }
 
-                    if (cmdargs.iscxx)
-                    {
-                        cmdargs.cxxflags.push_back(GCCRUNTIME);
-                        cmdargs.cxxflags.push_back(LIBSTDCXXRUNTIME);
-                    }
-                    else {
-                        cmdargs.cflags.push_back(GCCRUNTIME);
-                    }
-                };
+                        if (cmdargs.iscxx)
+                        {
+                            cmdargs.cxxflags.push_back(GCCRUNTIME);
+                            cmdargs.cxxflags.push_back(LIBSTDCXXRUNTIME);
+                        }
+                        else {
+                            cmdargs.cflags.push_back(GCCRUNTIME);
+                        }
+                    };
 
-                delayedcommands.push_back(dc_tuple(staticruntime, arg-STRLEN(COMMANDPREFIX)));
-                continue;
+                    delayedcommands.push_back(dc_tuple(staticruntime, arg-STRLEN(COMMANDPREFIX)));
+                }
+                break;
             }
-            else if (!std::strcmp(arg, "append-exe"))
+            case 't':
             {
-                cmdargs.appendexe = true;
-                continue;
-            }
-            else if (!std::strcmp(arg, "use-mingw-linker"))
-            {
-                auto usemingwlinker = [](commandargs &cmdargs, char *arg)
+                if (!std::strcmp(arg, "target") || !std::strcmp(arg, "t"))
                 {
-                    if (!cmdargs.islinkstep)
-                    {
-                        if (cmdargs.verbose)
-                            verbosemsg("ignoring %", arg);
-                        return;
-                    }
-
-                    cmdargs.usemingwlinker = 1;
-                };
-
-                delayedcommands.push_back(dc_tuple(usemingwlinker, arg-STRLEN(COMMANDPREFIX)));
-                continue;
+                    std::cout << target << std::endl;
+                    std::exit(EXIT_SUCCESS);
+                }
+                break;
             }
-            else if (!std::strcmp(arg, "help") || !std::strcmp(arg, "h"))
+            case 'u':
             {
-                printheader();
-
-                auto printcmdhelp = [&](const char *cmd, const std::string &text)
+                if (!std::strcmp(arg, "use-mingw-linker"))
                 {
-                    std::cout << " " << COMMANDPREFIX << cmd << ": " << text << std::endl;
-                };
+                    auto usemingwlinker = [](commandargs &cmdargs, char *arg)
+                    {
+                        if (!cmdargs.islinkstep)
+                        {
+                            if (cmdargs.verbose)
+                                verbosemsg("ignoring %", arg);
+                            return;
+                        }
 
-                printcmdhelp("version", "show version");
-                printcmdhelp("target", "show target");
+                        cmdargs.usemingwlinker = 1;
+                    };
 
-                printcmdhelp("env-<var>", std::string("show environment variable  [e.g: ") +
-                             std::string(COMMANDPREFIX) + std::string("env-ld]"));
-
-                printcmdhelp("env", "show all environment variables at once");
-                printcmdhelp("arch", "show target architecture");
-                printcmdhelp("static-runtime", "link runtime statically");
-                printcmdhelp("append-exe", "append .exe automatically to output filenames");
-                printcmdhelp("use-mingw-linker", "link with mingw");
-                printcmdhelp("verbose", "enable verbose messages");
+                    delayedcommands.push_back(dc_tuple(usemingwlinker, arg-STRLEN(COMMANDPREFIX)));
+                    continue;
+                }
+                break;
             }
-            else {
+            case 'v':
+            {
+                if (!std::strcmp(arg, "version") || !std::strcmp(arg, "v"))
+                {
+                    printheader();
+                    std::cout << "Copyright (C) 2013, 2014 Thomas Poechtrager" << std::endl;
+                    std::cout << "License: GPL v2" << std::endl;
+                    std::cout << "Bugs / Wishes: " << PACKAGE_BUGREPORT << std::endl;
+                    std::exit(EXIT_SUCCESS);
+                }
+                else if (!std::strcmp(arg, "verbose")) {
+                    cmdargs.verbose = true;
+                }
+                break;
+            }
+            default:
+            {
                 printheader();
                 std::cerr << "invalid argument: " << COMMANDPREFIX << arg << std::endl;
                 std::exit(EXIT_FAILURE);
             }
-
-            std::exit(EXIT_SUCCESS);
         }
     }
 
@@ -886,7 +953,12 @@ int main(int argc, char **argv)
             warn("MINGW_PATH env variable does not point to any "
                  "valid mingw installation for the current target!");
 
+#ifdef HAVE_UNSETENV
             unsetenv("MINGW_PATH");
+#else
+            std::exit(EXIT_FAILURE);
+#endif
+
             goto find_target_and_headers;
         }
 
@@ -963,18 +1035,6 @@ int main(int argc, char **argv)
 
         envvar(env, var, target.c_str(), --buf);
         delete[] buf;
-    }
-
-    switch (targettype)
-    {
-    case TARGET_WIN32:
-        env.push_back("CC=w32-clang");
-        env.push_back("CXX=w32-clang++");
-        break;
-    case TARGET_WIN64:
-        env.push_back("CC=w64-clang");
-        env.push_back("CXX=w64-clang++");
-        break;
     }
 
     cached:;
@@ -1149,6 +1209,6 @@ int main(int argc, char **argv)
     execvp(compiler.c_str(), cargs);
 
     std::cerr << "invoking compiler failed" << std::endl;
-    std::cerr << "clang not installed?" << std::endl;
+    std::cerr << compiler << " not installed?" << std::endl;
     return 1;
 }
