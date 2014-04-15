@@ -6,8 +6,8 @@
 /* Define to 1 if you have the `execvp' function. */
 #undef HAVE_EXECVP
 
-/* Define to 1 if you have the `execvpe' function. */
-#undef HAVE_EXECVPE
+/* Define to 1 if you have the `getenv' function. */
+#undef HAVE_GETENV
 
 /* Define to 1 if you have the `getpid' function. */
 #undef HAVE_GETPID
@@ -21,8 +21,14 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
+/* Define to 1 if you have the `opendir' function. */
+#undef HAVE_OPENDIR
+
 /* Define to 1 if you have the `readlink' function. */
 #undef HAVE_READLINK
+
+/* Define to 1 if you have the `setenv' function. */
+#undef HAVE_SETENV
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H

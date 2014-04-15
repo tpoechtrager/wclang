@@ -217,10 +217,7 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
 
             dir = base + mingw;
 
-            if (trydir(dir, ""))
-            {
-                return true;
-            }
+            if (trydir(dir, "")) return true;
         }
 #endif
 
