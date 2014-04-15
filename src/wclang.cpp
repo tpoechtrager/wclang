@@ -223,6 +223,8 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
             }
         }
 #endif
+
+        return false;
     };
 
     if (findheaders()) return true;
