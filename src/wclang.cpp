@@ -23,9 +23,11 @@
 #include <fstream>
 #include <typeinfo>
 #include <tuple>
-#include <sstream>
 #include <cstring>
+#include <algorithm>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <climits>
 #include <cassert>
@@ -44,6 +46,7 @@ enum {
 
 static constexpr const char* TARGET32[] = {
     "i686-w64-mingw32",
+    "i686-pc-mingw32",
     "i586-mingw32",
     "i586-mingw32msvc",
     "i486-mingw32"
@@ -51,6 +54,7 @@ static constexpr const char* TARGET32[] = {
 
 static constexpr const char* TARGET64[] = {
     "x86_64-w64-mingw32",
+    "x86_64-pc-mingw32",
     "amd64-mingw32msvc",
 };
 
@@ -69,6 +73,7 @@ static constexpr const char* ENVVARS[] = {
 
 static constexpr char COMMANDPREFIX[] = "-wc-";
 
+#ifndef NO_SYS_PATH
 /*
  * Paths where we should look for mingw C++ headers
  */
@@ -90,38 +95,19 @@ static constexpr const char* STDINCLUDEBASE[] = {
     "/usr/local",
     "/opt"
 };
-
-/*
- * Supported clang versions
- */
-
-constexpr const char* CLANGVERSIONS[] = {
-    "3.5", "3.4", "3.3", "3.2",
-    "3.1", "3.0", "2.9", "2.8"
-};
-
-/*
- * Supported mingw versions
- */
-
-static constexpr const char* MINGWVERSIONS[] = {
-    "4.9.0", "4.9",
-    "4.8.2", "4.8.1", "4.8.0", "4.8",
-    "4.7.3", "4.7.2", "4.7.1", "4.7.0", "4.7",
-    "4.6.4", "4.6.3", "4.6.2", "4.6.1", "4.6.0", "4.6",
-    "4.5.4", "4.5.3", "4.5.2", "4.5.1", "4.5.0", "4.5",
-    "4.4.7", "4.4.6", "4.4.5", "4.4.4", "4.4.3",
-    "4.4.2", "4.4.1", "4.4.0", "4.4"
-};
+#endif
 
 static bool findcxxheaders(const char *target, commandargs &cmdargs)
 {
     std::string base;
     std::string dir;
+    std::string root;
     struct stat st;
     auto &cxxpaths = cmdargs.cxxpaths;
     const auto &stdpaths = cmdargs.stdpaths;
-    std::string mingw = std::string("/") + std::string(target);
+
+    static std::string mingw;
+    mingw = std::string("/") + std::string(target);
 
     auto trydir = [&](const std::string &dir, const char *v) -> bool
     {
@@ -157,49 +143,98 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
         return false;
     };
 
-    for (const auto &stddir : stdpaths)
+    auto checkmingwheaders = [](const char *dir, const char *file) -> bool
     {
-        dir = stddir + std::string("/c++");
-        if (trydir(dir, nullptr)) return true;
+        static struct stat st;
+        static std::stringstream d;
 
-        for (const char *v : MINGWVERSIONS)
+        d.str(std::string());
+        d << dir << file << mingw;
+
+        return !stat(d.str().c_str(), &st);
+    };
+
+    root = stdpaths[0] + std::string("/../../..");
+
+    auto findheaders = [&]()
+    {
+        for (const auto &stddir : stdpaths)
         {
-            dir = stddir + std::string("/c++/") + std::string(v);
+            dir = stddir + std::string("/c++");
+            if (trydir(dir, nullptr)) return true;
+
+            auto hv = findhighestcompilerversion(dir.c_str());
+            if (!hv.num()) continue;
+
+            dir = stddir + std::string("/c++/") + hv.str();
             base = dir + std::string("/");
             if (trydir(dir, target)) return true;
         }
-    }
 
-    for (const char *cxxinclude : CXXINCLUDEBASE)
-    {
-        base = std::string(cxxinclude) + std::string("/");
-
-        for (const char *v : MINGWVERSIONS)
+#ifndef NO_SYS_PATH
+        for (const char *cxxinclude : CXXINCLUDEBASE)
         {
-            dir = base + std::string(v) + mingw;
-            if (trydir(dir, v)) return true;
+            base = root + std::string(cxxinclude) + std::string("/");
+
+            auto hv = findhighestcompilerversion(base.c_str(), checkmingwheaders);
+            if (!hv.num()) continue;
+
+            static std::string ver;
+            ver = hv.str();
+
+            dir = base + ver + mingw;
+            if (trydir(dir, ver.c_str())) return true;
         }
-    }
 
-    for (const char *cxxinclude : CXXINCLUDEBASE)
-    {
-        base  = std::string(cxxinclude) + std::string("/");
-        base += std::string(target) + std::string("/");
-
-        for (const char *v : MINGWVERSIONS)
+        for (const char *cxxinclude : CXXINCLUDEBASE)
         {
-            dir = base + std::string(v) + std::string("/include/c++");
-            if (trydir(dir, v)) return true;
-        }
-    }
+            base  = root + std::string(cxxinclude) + std::string("/");
+            base += std::string(target) + std::string("/");
 
-    return false;
+            auto hv = findhighestcompilerversion(base.c_str(), checkmingwheaders);
+            if (!hv.num()) continue;
+
+            static std::string ver;
+            ver = hv.str();
+
+            dir = base + ver + std::string("/include/c++");
+            if (trydir(dir, ver.c_str())) return true;
+        }
+
+        for (const char *cxxinclude : CXXINCLUDEBASE)
+        {
+            base  = root + std::string(cxxinclude) + std::string("/");
+            base += std::string(target) + std::string("/");
+
+            auto hv = findhighestcompilerversion(base.c_str());
+            if (!hv.num()) continue;
+
+            static std::string ver;
+            ver = hv.str();
+
+            base += ver + std::string("/include/c++");
+            if (!checkmingwheaders(base.c_str(), "")) continue;
+
+            dir = base + mingw;
+
+            if (trydir(dir, ""))
+            {
+                return true;
+            }
+        }
+#endif
+    };
+
+    if (findheaders()) return true;
+    root.clear();
+    return findheaders();
 }
 
 static bool findintrinheaders(commandargs &cmdargs)
 {
     std::string clangbin;
     std::stringstream dir;
+    compilerver hv;
     struct stat st;
     auto &intrinpaths = cmdargs.intrinpaths;
 
@@ -208,30 +243,30 @@ static bool findintrinheaders(commandargs &cmdargs)
     if (clangbin.empty())
         return false;
 
-    auto checkdir = [&](const std::string &dir) -> bool
+    auto trydir = [&]() -> bool
     {
-        if (!stat(dir.c_str(), &st) && S_ISDIR(st.st_mode))
+        if (!hv.num()) return false;
+        dir << hv.str(hv >= compilerver(3, 4, 1)) << "/include";
+
+        if (!stat(dir.str().c_str(), &st) && S_ISDIR(st.st_mode))
         {
-            intrinpaths.push_back(dir);
+            intrinpaths.push_back(dir.str());
             return true;
         }
 
         return false;
     };
 
-    for (auto *v : CLANGVERSIONS)
-    {
-        dir << clangbin << "/../lib/clang/" << v << "/include";
-        if (checkdir(dir.str())) return true;
-        dir.str(std::string());
-    }
+    dir << clangbin << "/../lib/clang/";
+    hv = findhighestcompilerversion(dir.str().c_str());
 
-    for (auto *v : CLANGVERSIONS)
-    {
-        dir << clangbin << "/../include/clang/" << v << "/include";
-        if (checkdir(dir.str())) return true;
-        dir.str(std::string());
-    }
+    if (trydir()) return true;
+
+    dir.str(std::string());
+    dir << clangbin << "/../include/clang/";
+    hv = findhighestcompilerversion(dir.str().c_str());
+
+    if (trydir()) return true;
 
     return false;
 }
@@ -309,8 +344,10 @@ static bool findstdheader(const char *target, commandargs &cmdargs)
         return true;
 #endif
 
+#ifndef NO_SYS_PATH
     for (const char *stdinclude : STDINCLUDEBASE)
         if (checkdir(stdinclude)) return true;
+#endif
 
     return false;
 }
@@ -411,6 +448,102 @@ void appendexetooutputname(char **cargs)
 /*
  * Tools
  */
+
+void concatenvvariable(const char *var, const std::string val, std::string *nval)
+{
+    std::string tmp;
+    if (!nval) nval = &tmp;
+    *nval = val;
+
+    if (char *oldval = getenv(var))
+    {
+        *nval += ":";
+        *nval += oldval;
+    }
+
+    setenv(var, nval->c_str(), 1);
+}
+
+compilerver parsecompilerversion(const char *compilerversion)
+{
+    const char *p = compilerversion;
+    compilerver ver;
+
+    ver.major = atoi(p);
+
+    while (*p && *p++ != '.')
+        ;
+
+    if (!*p)
+        return ver;
+
+    ver.minor = atoi(p);
+
+    if (!*p)
+        return ver;
+
+    while (*p && *p++ != '.')
+        ;
+
+    if (!*p)
+        return ver;
+
+    ver.patch = atoi(p);
+    return ver;
+}
+
+compilerver findhighestcompilerversion(const char *dir, listfilescallback cmp)
+{
+    static std::vector<compilerver> v;
+    static std::vector<std::string> dirs;
+
+    dirs.clear();
+
+    if (!listfiles(dir, &dirs, cmp))
+        return compilerver();
+
+    if (dirs.empty())
+        return compilerver();
+
+    v.clear();
+
+    for (auto &d : dirs)
+        v.push_back(parsecompilerversion(d.c_str()));
+
+    std::sort(v.begin(), v.end());
+    return v[v.size() - 1];
+}
+
+bool isdirectory(const char *file)
+{
+    struct stat st;
+    return !stat(file, &st) && S_ISDIR(st.st_mode);
+}
+
+bool listfiles(const char *dir, std::vector<std::string> *files,
+               listfilescallback cmp)
+{
+    DIR *d = opendir(dir);
+    dirent *de;
+
+    if (!d)
+        return false;
+
+    if (files)
+        files->clear();
+
+    while ((de = readdir(d)))
+    {
+        if (de->d_name[0] == '.' || !std::strcmp(de->d_name, ".."))
+            continue;
+
+        if ((!cmp || cmp(dir, de->d_name)) && files)
+            files->push_back(de->d_name);
+    }
+
+    closedir(d);
+    return true;
+}
 
 std::string &realpath(const char *file, std::string &result, realpathcmp cmp)
 {
@@ -944,6 +1077,7 @@ int main(int argc, char **argv)
     string_vector stdpaths;
     string_vector cxxpaths;
     std::string compiler;
+    std::string compilerpath;
     string_vector env;
     string_vector args;
     char **cargs = nullptr;
@@ -952,7 +1086,8 @@ int main(int argc, char **argv)
     string_vector cxxflags;
 
     commandargs cmdargs(intrinpaths, stdpaths, cxxpaths, cflags,
-                        cxxflags, target, compiler, env, args, iscxx);
+                        cxxflags, target, compiler, compilerpath,
+                        env, args, iscxx);
 
     const char *cachefile = nullptr;
 
@@ -1188,6 +1323,29 @@ int main(int argc, char **argv)
 
     if (!cmdargs.cached)
     {
+        {
+            /*
+             * Find MinGW binaries (required for linking)
+             */
+            std::string gcc = target + (iscxx ? "-g++" : "-gcc");
+            std::string path;
+
+            const char *mingwpath = getenv("MINGW_PATH");
+
+            if (!mingwpath)
+            {
+#ifdef MINGW_PATH
+                if (*MINGW_PATH) mingwpath = MINGW_PATH;
+#endif
+            }
+
+            if (mingwpath && *mingwpath)
+                concatenvvariable("PATH", mingwpath);
+
+            getpathofcommand(gcc.c_str(), path);
+            concatenvvariable("COMPILER_PATH", path, &cmdargs.compilerpath);
+        }
+
         args.push_back(compiler);
 
         auto pushcompilerflags = [&](const string_vector &flags)
@@ -1264,6 +1422,16 @@ int main(int argc, char **argv)
         appendexetooutputname(cargs);
 
     /*
+     * Write cache when requested
+     */
+
+    if (!cmdargs.cached && getenv(iscxx ? "WCLANG_WRITE_CXX_CACHE" :
+                                          "WCLANG_WRITE_CC_CACHE"))
+    {
+        writecache(cmdargs); /* no return */
+    }
+
+    /*
      * Execute command
      */
 
@@ -1289,15 +1457,8 @@ int main(int argc, char **argv)
         printtimes();
     }
 
-    /*
-     * Write cache when requested
-     */
-
-    if (!cmdargs.cached && getenv(iscxx ? "WCLANG_WRITE_CXX_CACHE" :
-                                          "WCLANG_WRITE_CC_CACHE"))
-    {
-        writecache(cmdargs); /* no return */
-    }
+    if (cmdargs.cached && !cmdargs.compilerpath.empty())
+        setenv("COMPILER_PATH", cmdargs.compilerpath.c_str(), 1);
 
     execvp(compiler.c_str(), cargs);
 

@@ -18,5 +18,9 @@ install-exec-hook:
 	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/amd64-mingw32msvc-clang++
 	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/i686-w64-mingw32-clang
 	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/i686-w64-mingw32-clang++
+	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/i686-pc-mingw32-clang
+	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/i686-pc-mingw32-clang++
 	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/x86_64-w64-mingw32-clang
 	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/x86_64-w64-mingw32-clang++
+	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/x86_64-pc-mingw32-clang
+	ln -fs $(DESTDIR)$(bindir)/wclang $(DESTDIR)$(bindir)/x86_64-pc-mingw32-clang++

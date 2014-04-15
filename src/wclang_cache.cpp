@@ -83,6 +83,7 @@ void writecache(commandargs &cmdargs)
     write(&cmdargs.verbose, sizeof(cmdargs.verbose));
     writestring(cmdargs.target);
     writestring(cmdargs.compiler);
+    writestring(cmdargs.compilerpath);
     writestringvector(cmdargs.env);
     writestringvector(cmdargs.args);
     write(&cmdargs.iscxx, sizeof(cmdargs.iscxx));
@@ -168,6 +169,7 @@ void loadcache(const char *filename, commandargs &cmdargs)
     read(&cmdargs.verbose, sizeof(cmdargs.verbose));
     loadstring(cmdargs.target);
     loadstring(cmdargs.compiler);
+    loadstring(cmdargs.compilerpath);
     loadstringvector(cmdargs.env);
     loadstringvector(cmdargs.args);
     read(&cmdargs.iscxx, sizeof(cmdargs.iscxx));
