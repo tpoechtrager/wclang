@@ -652,7 +652,10 @@ std::string &realpath(const char *file, std::string &result, realpathcmp cmp)
         ssize_t len;
 
         if ((len = readlink(sfile.c_str(), buf, PATH_MAX)) != -1)
-            result.assign(buf, len);
+        {
+            sfile.resize(sfile.find_last_of("/")+1);
+            sfile.append(buf, len);
+        }
     }
 #endif
 
@@ -666,15 +669,11 @@ std::string &getpathofcommand(const char *command, std::string &result)
         return !access(f, F_OK|X_OK);
     });
 
-    const size_t len = strlen(command)+1;
+    size_t pos = result.find_last_of("/");
 
-    if (result.size() < len)
-    {
-        result.clear();
-        return result;
-    }
+    if (pos != std::string::npos)
+        result.resize(pos);
 
-    result.resize(result.size()-len);
     return result;
 }
 
