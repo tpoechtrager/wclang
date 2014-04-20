@@ -99,173 +99,231 @@ static constexpr const char* STDINCLUDEBASE[] = {
 
 static bool findcxxheaders(const char *target, commandargs &cmdargs)
 {
-    std::string base;
-    std::string dir;
     std::string root;
-    struct stat st;
+    std::string cxxheaders;
+    std::string mingwheaders;
+    auto &mv = cmdargs.mingwversion;
     auto &cxxpaths = cmdargs.cxxpaths;
     const auto &stdpaths = cmdargs.stdpaths;
+    static const char *_target = target;
 
-    static std::string mingw;
-    mingw = std::string("/") + std::string(target);
-
-    auto trydir = [&](const std::string &dir, const char *v) -> bool
-    {
-        if (!stat(dir.c_str(), &st) && S_ISDIR(st.st_mode))
-        {
-            constexpr const char *HDRCHECKFILE = "/iostream";
-            std::string hdrcheck;
-            bool hdrcheckok = false;
-
-            if (!base.empty() && v)
-            {
-                base += std::string(v);
-                hdrcheck = base + std::string(HDRCHECKFILE);
-                hdrcheckok = stat(hdrcheck.c_str(), &st) == 0;
-                cxxpaths.push_back(base);
-            }
-
-            hdrcheck = dir + std::string(HDRCHECKFILE);
-
-            if (!hdrcheckok && stat(hdrcheck.c_str(), &st))
-                return false;
-
-            cxxpaths.push_back(dir);
-
-#ifdef _DEBUG
-            for (const auto &dir : cxxpaths)
-                std::cout << "found C++ include dir: " << dir << std::endl;
-#endif
-
-            return true;
-        }
-
-        return false;
-    };
-
-    auto checkmingwheaders = [](const char *dir, const char *file) -> bool
+    auto checkmingwheaders = [](const char *dir, const char *file)
     {
         static struct stat st;
         static std::stringstream d;
 
-        d.str(std::string());
-        d << dir << file << mingw;
+        clear(d);
+        d << dir << file << "/" << _target;
 
         return !stat(d.str().c_str(), &st);
     };
 
-    root = stdpaths[0] + std::string("/../../..");
+    auto checkheaderdir = [](const std::string &cxxheaderdir)
+    {
+        static std::string file;
+        static struct stat st;
+
+        file = cxxheaderdir;
+        file += "/";
+        file += "iostream";
+
+        return !stat(file.c_str(), &st);
+    };
+
+    auto addheaderdir = [&](const std::string &cxxheaderdir, bool mingw)
+    {
+        static std::string mingwheaderdir;
+        cxxpaths.push_back(cxxheaderdir);
+
+        if (mingw)
+        {
+            mingwheaderdir = cxxheaderdir;
+            mingwheaderdir += "/";
+            mingwheaderdir += target;
+
+            cxxpaths.push_back(mingwheaderdir);
+        }
+    };
 
     auto findheaders = [&]()
     {
         for (const auto &stddir : stdpaths)
         {
-            dir = stddir + std::string("/c++");
-            if (trydir(dir, nullptr)) return true;
+            /*
+             * a: stddir / c++
+             * b: a / xxxx-w64-mingw32
+             */
 
-            auto hv = findhighestcompilerversion(dir.c_str());
-            if (!hv.num()) continue;
+            cxxheaders = stddir;
+            cxxheaders += "/c++";
+            cxxheaders += "/";
 
-            dir = stddir + std::string("/c++/") + hv.str();
-            base = dir + std::string("/");
-            if (trydir(dir, target)) return true;
+            if (checkheaderdir(cxxheaders))
+            {
+                addheaderdir(cxxheaders, true);
+                return true;
+            }
+
+            /*
+             * a: stddir / c++ / <gccver>
+             * b: a / xxxx-w64-mingw32
+             */
+
+            mv = findhighestcompilerversion(cxxheaders.c_str());
+
+            if (!mv.num())
+                continue;
+
+            cxxheaders += mv.s;
+
+            if (checkheaderdir(cxxheaders))
+            {
+                addheaderdir(cxxheaders, true);
+                return true;
+            }
         }
 
 #ifndef NO_SYS_PATH
         for (const char *cxxinclude : CXXINCLUDEBASE)
         {
-            base = root + std::string(cxxinclude) + std::string("/");
+            /*
+             * a: root / cxxinclude / <gccver>
+             * b: a / xxxx-w64-mingw32
+             */
 
-            auto hv = findhighestcompilerversion(base.c_str(), checkmingwheaders);
-            if (!hv.num()) continue;
+            cxxheaders = root;
+            cxxheaders += cxxinclude;
+            cxxheaders += "/";
 
-            static std::string ver;
-            ver = hv.str();
+            mv = findhighestcompilerversion(cxxheaders.c_str(),
+                                            checkmingwheaders);
 
-            dir = base + ver + mingw;
-            if (trydir(dir, ver.c_str())) return true;
+            if (!mv.num())
+                continue;
+
+            cxxheaders += mv.s;
+
+            if (checkheaderdir(cxxheaders))
+            {
+                addheaderdir(cxxheaders, true);
+                return true;
+            }
         }
 
         for (const char *cxxinclude : CXXINCLUDEBASE)
         {
-            base  = root + std::string(cxxinclude) + std::string("/");
-            base += std::string(target) + std::string("/");
+            /*
+             * a: root / cxxinclude / <target> / <gccver> / include / c++
+             * b: root / cxxinclude / <target> / <gccver> / xxxx-w64-mingw32
+             */
 
-            auto hv = findhighestcompilerversion(base.c_str(), checkmingwheaders);
-            if (!hv.num()) continue;
+            cxxheaders  = root;
+            cxxheaders += cxxinclude;
+            cxxheaders += "/";
+            cxxheaders += target;
+            cxxheaders += "/";
 
-            static std::string ver;
-            ver = hv.str();
+            mv = findhighestcompilerversion(cxxheaders.c_str(),
+                                            checkmingwheaders);
 
-            dir = base + ver + std::string("/include/c++");
-            if (trydir(dir, ver.c_str())) return true;
+            if (!mv.num())
+                continue;
+
+            mingwheaders = cxxheaders;
+
+            cxxheaders += mv.s;
+            cxxheaders += "/include/c++";
+
+            if (checkheaderdir(cxxheaders))
+            {
+                addheaderdir(cxxheaders, false);
+                addheaderdir(mingwheaders, false);
+                return true;
+            }
         }
 
         for (const char *cxxinclude : CXXINCLUDEBASE)
         {
-            base  = root + std::string(cxxinclude) + std::string("/");
-            base += std::string(target) + std::string("/");
+            /*
+             * a: root / cxxinclude / <target> / <gccver> / include / c++
+             * b: a / xxxx-w64-mingw32
+             */
 
-            auto hv = findhighestcompilerversion(base.c_str());
-            if (!hv.num()) continue;
+            cxxheaders = root;
+            cxxheaders += cxxinclude;
+            cxxheaders += "/";
+            cxxheaders += target;
+            cxxheaders += "/";
 
-            static std::string ver;
-            ver = hv.str();
+            mv = findhighestcompilerversion(cxxheaders.c_str());
 
-            base += ver + std::string("/include/c++");
-            if (!checkmingwheaders(base.c_str(), "")) continue;
+            if (!mv.num())
+                continue;
 
-            dir = base + mingw;
+            cxxheaders += mv.s;
+            cxxheaders += "/include/c++";
 
-            if (trydir(dir, "")) return true;
+            if (!checkmingwheaders(cxxheaders.c_str(), ""))
+                continue;
+
+            if (checkheaderdir(cxxheaders))
+            {
+                addheaderdir(cxxheaders, true);
+                return true;
+            }
         }
 #endif
 
         return false;
     };
 
+    root = stdpaths[0] + "/../../..";
     if (findheaders()) return true;
+
     root.clear();
     return findheaders();
 }
 
 static bool findintrinheaders(commandargs &cmdargs)
 {
-    std::string clangbin;
+    std::string clangdir;
     std::stringstream dir;
-    compilerver hv;
+    auto &cv = cmdargs.clangversion;
     struct stat st;
-    auto &intrinpaths = cmdargs.intrinpaths;
 
-    getpathofcommand("clang", clangbin);
+    getpathofcommand("clang", clangdir);
 
-    if (clangbin.empty())
+    if (clangdir.empty())
         return false;
 
     auto trydir = [&]() -> bool
     {
-        if (!hv.num()) return false;
-        dir << hv.str(hv >= compilerver(3, 4, 1)) << "/include";
+        if (!cv.num()) return false;
 
-        if (!stat(dir.str().c_str(), &st) && S_ISDIR(st.st_mode))
+        dir << cv.s << "/include";
+
+        if (!stat(dir.str().c_str(), &st) && S_ISDIR(st.st_mode) &&
+            !cmdargs.nointrinsics)
         {
-            intrinpaths.push_back(dir.str());
+            cmdargs.intrinpaths.push_back(dir.str());
             return true;
         }
 
         return false;
     };
 
-    dir << clangbin << "/../lib/clang/";
-    hv = findhighestcompilerversion(dir.str().c_str());
+    dir << clangdir << "/../lib/clang/";
+    cv = findhighestcompilerversion(dir.str().c_str());
 
-    if (trydir()) return true;
+    if (trydir())
+        return true;
 
-    dir.str(std::string());
-    dir << clangbin << "/../include/clang/";
-    hv = findhighestcompilerversion(dir.str().c_str());
+    clear(dir);
+    dir << clangdir << "/../include/clang/";
+    cv = findhighestcompilerversion(dir.str().c_str());
 
-    if (trydir()) return true;
+    if (trydir())
+        return true;
 
     return false;
 }
@@ -283,7 +341,7 @@ static bool findstdheader(const char *target, commandargs &cmdargs)
         {
             if (!stat(dir.c_str(), &st) && S_ISDIR(st.st_mode))
             {
-                std::string filecheck = dir + std::string("/stdlib.h");
+                std::string filecheck = dir + "/stdlib.h";
 
                 if (stat(filecheck.c_str(), &st))
                     return false;
@@ -301,13 +359,21 @@ static bool findstdheader(const char *target, commandargs &cmdargs)
             return false;
         };
 
-        dir  = std::string(stdinclude) + std::string("/");
-        dir += std::string(target) + std::string("/include");
-        if (trydir(dir)) return true;
+        dir = stdinclude;
+        dir += "/";
+        dir += target;
+        dir += "/include";
 
-        dir  = std::string(stdinclude) + std::string("/");
-        dir += std::string(target) + std::string("/sys-root/mingw/include");
-        if (trydir(dir)) return true;
+        if (trydir(dir))
+            return true;
+
+        dir = stdinclude;
+        dir += "/";
+        dir += target;
+        dir += "/sys-root/mingw/include";
+
+        if (trydir(dir))
+            return true;
 
         return false;
     };
@@ -403,6 +469,9 @@ static const char *findtriple(const char *name, int &targettype)
 
 void appendexetooutputname(char **cargs)
 {
+    const char *filename;
+    const char *suffix;
+
     for (char **arg = cargs; *arg; ++arg)
     {
         if (!std::strncmp(*arg, "-o", STRLEN("-o")))
@@ -410,11 +479,21 @@ void appendexetooutputname(char **cargs)
             if (!(*arg)[2] && (!*++arg || **arg == '-'))
                 break;
 
-            const char *filename = !std::strncmp(*arg, "-o", STRLEN("-o")) ? &(*arg)[2] : *arg;
-            const char *pfix = std::strrchr(filename, '.');
+            if (!std::strncmp(*arg, "-o", STRLEN("-o")))
+                filename = &(*arg)[2];
+            else
+                filename = *arg;
 
-            if (pfix && (!std::strcmp(pfix, ".exe") || !std::strcmp(pfix, ".dll") || !std::strcmp(pfix, ".S")))
-                return;
+            suffix = std::strrchr(filename, '.');
+
+            if (suffix)
+            {
+                if (!std::strcmp(suffix, ".exe") || !std::strcmp(suffix, ".dll") ||
+                    !std::strcmp(suffix, ".S"))
+                {
+                    return;
+                }
+            }
 
             for (char **p = arg+1; *p; ++p)
             {
@@ -422,12 +501,14 @@ void appendexetooutputname(char **cargs)
                     return;
             }
 
-            std::cerr << R"(wclang: appending ".exe" to output filename ")" << filename << R"(")" << std::endl;
+            std::cerr << R"(wclang: appending ".exe" to output filename ")"
+                      << filename << R"(")" << std::endl;
 
             filename = nullptr;
-            pfix = nullptr;
+            suffix = nullptr;
 
-            *arg = reinterpret_cast<char*>(std::realloc(*arg, std::strlen(*arg)+STRLEN(".exe")+1));
+            const size_t len = std::strlen(*arg)+STRLEN(".exe")+1;
+            *arg = static_cast<char*>(std::realloc(*arg, len));
 
             if (!*arg)
             {
@@ -468,6 +549,7 @@ compilerver parsecompilerversion(const char *compilerversion)
     const char *p = compilerversion;
     compilerver ver;
 
+    std::strncpy(ver.s, compilerversion, sizeof(ver.s)-1);
     ver.major = atoi(p);
 
     while (*p && *p++ != '.')
@@ -850,7 +932,8 @@ static void parseargs(int argc, char **argv, const char *target,
 
                     if (!end)
                     {
-                        std::cerr << "internal error (could not determine arch)" << std::endl;
+                        std::cerr << "internal error (could not determine arch)"
+                                  << std::endl;
                         std::exit(EXIT_FAILURE);
                     }
 
@@ -896,8 +979,10 @@ static void parseargs(int argc, char **argv, const char *target,
 
                     if (!found)
                     {
-                        std::cerr << "environment variable " << arg << " not found" << std::endl;
-                        std::cerr << "available environment variables: " << std::endl;
+                        std::cerr << "environment variable " << arg << " not found"
+                                  << std::endl
+                                  << "available environment variables: "
+                                  << std::endl;
 
                         for (const char *var : ENVVARS)
                             std::cerr << " " << var << std::endl;
@@ -1189,9 +1274,11 @@ int main(int argc, char **argv)
         desc = std::string("mingw-w64 (") + std::string(type) + std::string(")");
 
         std::cerr << "cannot find " << desc << " installation" << std::endl;
-        std::cerr << "make sure " << desc << " is installed on your system" << std::endl;
+        std::cerr << "make sure " << desc << " is installed on your system"
+                  << std::endl;
+
         std::cerr << "if you have moved your mingw installation, "
-                     "then re-run the installation process!" << std::endl;
+                     "then re-run the installation process" << std::endl;
         return 1;
     }
 
@@ -1201,19 +1288,23 @@ int main(int argc, char **argv)
 
     if (stdpaths.empty())
     {
-        std::cerr << "cannot find " << target << " C headers" << std::endl;
-        std::cerr << "make sure " << target << " C headers are installed on your system " << std::endl;
+        std::cerr << "cannot find " << target
+                  << " C headers" << std::endl;
+
+        std::cerr << "make sure " << target
+                  << " C headers are installed on your system " << std::endl;
         return 1;
     }
 
-    if (iscxx)
+    if (!findcxxheaders(target.c_str(), cmdargs))
     {
-        if (!findcxxheaders(target.c_str(), cmdargs))
-        {
-            std::cerr << "can not find " << target << " C++ headers" << std::endl;
-            std::cerr << "make sure " << target << " C++ headers are installed on your system " << std::endl;
-            return 1;
-        }
+        std::cerr << "cannot find " << target
+                  << " C++ headers" << std::endl;
+
+        std::cerr << "make sure " << target
+                  << " C++ headers are installed on your system "
+                  << std::endl;
+        return 1;
     }
 
     /*
@@ -1281,42 +1372,43 @@ int main(int argc, char **argv)
         realpath(compiler.c_str(), compiler);
     }
 
-    if (iscxx)
+    if ((targettype == TARGET_WIN64) &&
+        (cmdargs.iscompilestep || cmdargs.islinkstep) &&
+        (cmdargs.optimizationlevel >= optimize::LEVEL_1))
     {
-        if ((targettype == TARGET_WIN64) &&
-            (cmdargs.iscompilestep || cmdargs.islinkstep) &&
-            (cmdargs.optimizationlevel >= optimize::LEVEL_1))
+        /*
+         * Workaround for a bug in the MinGW math.h header,
+         * fabs() and friends getting miscompiled without
+         * defining __CRT__NO_INLINE, because there is
+         * something wrong with their inline definition.
+         */
+        char *p;
+        if (!(p = getenv("WCLANG_NO_CRT_INLINE_WORKAROUND")) || *p == '0')
         {
-            /*
-             * Workaround for a bug in the MinGW math.h header,
-             * fabs() and friends getting miscompiled without
-             * defining __CRT__NO_INLINE, because there is
-             * something wrong with their inline definition.
-             */
-            char *p;
-            if (!(p = getenv("WCLANG_NO_CRT_INLINE_WORKAROUND")) || *p == '0')
-            {
-                // warn("defining __CRT__NO_INLINE to workaround bugs in the mingw math.h header");
-                cxxflags.push_back("-D__CRT__NO_INLINE");
-            }
+            // warn("defining __CRT__NO_INLINE to work around bugs in"
+            //      "the mingw math.h header");
+            cxxflags.push_back("-D__CRT__NO_INLINE");
         }
+    }
 
-        if (cmdargs.exceptions != 0)
+    if (cmdargs.exceptions != 0)
+    {
+        char *p;
+        if (!(p = getenv("WCLANG_FORCE_CXX_EXCEPTIONS")) || *p == '0')
         {
-            char *p;
-            if (!(p = getenv("WCLANG_FORCE_CXX_EXCEPTIONS")) || *p == '0')
+            if (cmdargs.exceptions == 1)
             {
-                if (cmdargs.exceptions == 1)
-                {
-                    warn("-fexceptions will be replaced with -fno-exceptions: exceptions are not supported (yet)");
-                    std::cerr << "set WCLANG_FORCE_CXX_EXCEPTIONS to 1 (env. variable) to force C++ exceptions" << std::endl;
-                }
+                warn("-fexceptions will be replaced with -fno-exceptions: "
+                     "exceptions are not supported (yet)");
 
-                cxxflags.push_back("-fno-exceptions");
+                std::cerr << "set WCLANG_FORCE_CXX_EXCEPTIONS to 1 "
+                          << "(env. variable) to force C++ exceptions" << std::endl;
             }
-            else {
-                cmdargs.exceptions = -1;
-            }
+
+            cxxflags.push_back("-fno-exceptions");
+        }
+        else {
+            cmdargs.exceptions = -1;
         }
     }
 
@@ -1357,6 +1449,8 @@ int main(int argc, char **argv)
 
         if (!cmdargs.islinkstep || !cmdargs.usemingwlinker)
         {
+            char *p;
+
             args.push_back(CLANG_TARGET_OPT);
             args.push_back(target);
 
@@ -1375,8 +1469,22 @@ int main(int argc, char **argv)
                 }
             };
 
-            if (!cmdargs.nointrinsics && !findintrinheaders(cmdargs))
-               warn("cannot find clang intrinsics directory");
+            if (!findintrinheaders(cmdargs))
+            {
+                if (!cmdargs.nointrinsics)
+                    warn("cannot find clang intrinsics directory");
+            }
+            else if (cmdargs.clangversion >= compilerver(3, 5))
+            {
+                /*
+                 * Workaround for clang 3.5+ to get rid of
+                 * error: redeclaration of '_scanf_l' cannot add 'dllimport' attribute
+                 */
+                args.push_back("-D_STDIO_S_DEFINED");
+            }
+
+            if ((p = getenv("WCLANG_NO_INTEGRATED_AS")) && *p == '1')
+                args.push_back("-no-integrated-as");
 
             pushdirs(intrinpaths);
             pushdirs(stdpaths);

@@ -34,6 +34,11 @@ constexpr size_t STRLEN(const T &str)
 
 static_assert(STRLEN("test string") == 11, "");
 
+static inline void clear(std::stringstream &s)
+{
+    s.str(std::string());
+}
+
 typedef unsigned long long ullong;
 typedef std::vector<std::string> string_vector;
 
@@ -61,8 +66,8 @@ compilerver findhighestcompilerversion(const char *dir, listfilescallback cmp = 
 
 struct compilerversion {
     constexpr compilerversion(int major, int minor, int patch = 0)
-    : major(major), minor(minor), patch(patch) {}
-    constexpr compilerversion() : major(), minor(), patch() {}
+    : major(major), minor(minor), patch(patch), s() {}
+    constexpr compilerversion() : major(), minor(), patch(), s() {}
 
     constexpr int num() const
     {
@@ -116,11 +121,8 @@ struct compilerversion {
         }
     }
 
-    std::string str(bool force = false) const
+    std::string str() const
     {
-        if (!patch && !force)
-            return shortstr();
-
         std::stringstream tmp;
         tmp << major << "." << minor << "." << patch;
         return tmp.str();
@@ -136,6 +138,7 @@ struct compilerversion {
     int major;
     int minor;
     int patch;
+    char s[12];
 };
 
 enum optimize {
@@ -150,6 +153,8 @@ enum optimize {
 struct commandargs {
     bool cached;
     bool verbose;
+    compilerver clangversion;
+    compilerver mingwversion;
     string_vector &intrinpaths;
     string_vector &stdpaths;
     string_vector &cxxpaths;
