@@ -948,7 +948,15 @@ static void parseargs(int argc, char **argv, const char *target,
             }
             case 'e':
             {
-                if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
+                if (!std::strncmp(arg, "elf", STRLEN("elf")))
+                {
+                    /* output elf object files */
+                    cmdargs.target += "-elf";
+                    /* force integrated AS */
+                    cmdargs.cflags.push_back("-integrated-as");
+                    cmdargs.cxxflags.push_back("-integrated-as");
+                }
+                else if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
                     !std::strncmp(arg, "e-", STRLEN("e-")))
                 {
                     bool found = false;
@@ -1016,6 +1024,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     printcmdhelp("env-<var>", std::string("show environment variable  [e.g: ") +
                                  std::string(COMMANDPREFIX) + std::string("env-ld]"));
 
+                    printcmdhelp("elf", "output elf object files");
                     printcmdhelp("env", "show all environment variables at once");
                     printcmdhelp("arch", "show target architecture");
                     printcmdhelp("static-runtime", "link runtime statically");
