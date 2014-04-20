@@ -284,17 +284,11 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
     return findheaders();
 }
 
-static bool findintrinheaders(commandargs &cmdargs)
+static bool findintrinheaders(commandargs &cmdargs, const std::string &clangdir)
 {
-    std::string clangdir;
     std::stringstream dir;
     auto &cv = cmdargs.clangversion;
     struct stat st;
-
-    getpathofcommand("clang", clangdir);
-
-    if (clangdir.empty())
-        return false;
 
     auto trydir = [&]() -> bool
     {
@@ -642,7 +636,8 @@ std::string &realpath(const char *file, std::string &result, realpathcmp cmp)
         while (*p && *p != ':')
             sfile += *p++;
 
-        sfile += std::string("/") + std::string(file);
+        sfile += "/";
+        sfile += file;
 
         if (!stat(sfile.c_str(), &st) && (!cmp || cmp(sfile.c_str(), st)))
             break;
@@ -950,11 +945,14 @@ static void parseargs(int argc, char **argv, const char *target,
             {
                 if (!std::strncmp(arg, "elf", STRLEN("elf")))
                 {
-                    /* output elf object files */
-                    cmdargs.target += "-elf";
-                    /* force integrated AS */
-                    cmdargs.cflags.push_back("-integrated-as");
-                    cmdargs.cxxflags.push_back("-integrated-as");
+                    if (cmdargs.target.find("-elf") == std::string::npos)
+                    {
+                        /* output elf object files */
+                        cmdargs.target += "-elf";
+                        /* force integrated AS */
+                        cmdargs.cflags.push_back("-integrated-as");
+                        cmdargs.cxxflags.push_back("-integrated-as");
+                    }
                 }
                 else if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
                     !std::strncmp(arg, "e-", STRLEN("e-")))
@@ -1171,6 +1169,7 @@ int main(int argc, char **argv)
     string_vector cxxpaths;
     std::string compiler;
     std::string compilerpath;
+    std::string compilerbinpath;
     string_vector env;
     string_vector args;
     char **cargs = nullptr;
@@ -1180,7 +1179,7 @@ int main(int argc, char **argv)
 
     commandargs cmdargs(intrinpaths, stdpaths, cxxpaths, cflags,
                         cxxflags, target, compiler, compilerpath,
-                        env, args, iscxx);
+                        compilerbinpath, env, args, iscxx);
 
     const char *cachefile = nullptr;
 
@@ -1424,6 +1423,25 @@ int main(int argc, char **argv)
     if (!cmdargs.cached)
     {
         {
+            std::string tmp;
+
+            getpathofcommand(compiler.c_str(), compilerbinpath);
+
+            if (compilerbinpath.empty())
+            {
+                std::cerr << "cannot find '" << compiler << "' executable"
+                          << std::endl;
+                return 1;
+            }
+
+            tmp.swap(compiler);
+
+            compiler = compilerbinpath;
+            compiler += "/";
+            compiler += tmp;
+        }
+
+        {
             /*
              * Find MinGW binaries (required for linking)
              */
@@ -1478,18 +1496,21 @@ int main(int argc, char **argv)
                 }
             };
 
-            if (!findintrinheaders(cmdargs))
+            if (!cmdargs.islinkstep || !cmdargs.usemingwlinker)
             {
-                if (!cmdargs.nointrinsics)
-                    warn("cannot find clang intrinsics directory");
-            }
-            else if (cmdargs.clangversion >= compilerver(3, 5))
-            {
-                /*
-                 * Workaround for clang 3.5+ to get rid of
-                 * error: redeclaration of '_scanf_l' cannot add 'dllimport' attribute
-                 */
-                args.push_back("-D_STDIO_S_DEFINED");
+                if (!findintrinheaders(cmdargs, compilerbinpath))
+                {
+                    if (!cmdargs.nointrinsics)
+                        warn("cannot find clang intrinsics directory");
+                }
+                else if (cmdargs.clangversion >= compilerver(3, 5))
+                {
+                    /*
+                     * Workaround for clang 3.5+ to get rid of
+                     * error: redeclaration of '_scanf_l' cannot add 'dllimport' attribute
+                     */
+                    args.push_back("-D_STDIO_S_DEFINED");
+                }
             }
 
             if ((p = getenv("WCLANG_NO_INTEGRATED_AS")) && *p == '1')
