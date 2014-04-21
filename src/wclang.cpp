@@ -1439,12 +1439,30 @@ int main(int argc, char **argv)
 
         if (pid > 0)
         {
+            int status = 1;
+
+            if (waitpid(pid, &status, 0) == -1)
+            {
+                ERROR("waitpid() failed");
+                return 1;
+            }
+
+            if (WIFEXITED(status))
+            {
+                if (status)
+                    return status;
+            }
+            else
+            {
+                ERROR("uncaught signal?");
+                return 1;
+            }
+
             analyzerflags.clear();
-            waitpid(pid, NULL, 0);
         }
         else if (pid < 0)
         {
-            std::cerr << "fork() failed" << std::endl;
+            ERROR("fork() failed");
             return  1;
         }
     }
