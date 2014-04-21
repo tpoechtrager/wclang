@@ -920,7 +920,24 @@ static void parseargs(int argc, char **argv, const char *target,
         {
             case 'a':
             {
-                if (!std::strcmp(arg, "arch") || !std::strcmp(arg, "a"))
+                if (!std::strcmp(arg, "analyze"))
+                {
+                    constexpr const char *analyzerflags[] =
+                    {
+                        "--analyze", "-Xanalyzer", "-analyzer-output=text",
+                        "-Qunused-arguments"
+                    };
+
+                    for (auto &f : analyzerflags)
+                        cmdargs.cflags.push_back(f);
+
+                    if (cmdargs.iscxx)
+                    {
+                        for (auto &f : analyzerflags)
+                            cmdargs.cxxflags.push_back(f);
+                    }
+                }
+                else if (!std::strcmp(arg, "arch") || !std::strcmp(arg, "a"))
                 {
                     const char *end = std::strchr(target, '-');
 
@@ -1023,6 +1040,7 @@ static void parseargs(int argc, char **argv, const char *target,
 
                     printcmdhelp("elf", "output elf object files");
                     printcmdhelp("env", "show all environment variables at once");
+                    printcmdhelp("analyze", "analyze source code");
                     printcmdhelp("arch", "show target architecture");
                     printcmdhelp("static-runtime", "link runtime statically");
                     printcmdhelp("append-exe", "append .exe automatically to output filenames");
