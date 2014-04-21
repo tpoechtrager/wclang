@@ -160,6 +160,7 @@ struct commandargs {
     string_vector &cxxpaths;
     string_vector &cflags;
     string_vector &cxxflags;
+    string_vector &analyzerflags;
     std::string &target;
     std::string &compiler;
     std::string &compilerpath;
@@ -176,13 +177,14 @@ struct commandargs {
     int usemingwlinker;
 
     commandargs(string_vector &intrinpaths, string_vector &stdpaths, string_vector &cxxpaths,
-                string_vector &cflags, string_vector &cxxflags, std::string &target,
-                std::string &compiler, std::string &compilerpath, std::string &compilerbinpath,
-                string_vector &env, string_vector &args, bool &iscxx) :
+                string_vector &cflags, string_vector &cxxflags, string_vector &analyzerflags,
+                std::string &target, std::string &compiler, std::string &compilerpath,
+                std::string &compilerbinpath, string_vector &env, string_vector &args, bool &iscxx)
+                :
                 cached(false), verbose(false), intrinpaths(intrinpaths), stdpaths(stdpaths),
-                cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags), target(target),
-                compiler(compiler), compilerpath(compilerpath), compilerbinpath(compilerbinpath),
-                env(env), args(args), iscxx(iscxx), appendexe(false), iscompilestep(false),
-                islinkstep(false), nointrinsics(false), exceptions(-1), optimizationlevel(0),
-                usemingwlinker(0) {}
+                cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags), analyzerflags(analyzerflags),
+                target(target), compiler(compiler), compilerpath(compilerpath),
+                compilerbinpath(compilerbinpath), env(env), args(args), iscxx(iscxx),
+                appendexe(false), iscompilestep(false), islinkstep(false), nointrinsics(false),
+                exceptions(-1), optimizationlevel(0), usemingwlinker(0) {}
 } __attribute__ ((aligned (8)));

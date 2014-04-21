@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <climits>
@@ -929,13 +930,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     };
 
                     for (auto &f : analyzerflags)
-                        cmdargs.cflags.push_back(f);
-
-                    if (cmdargs.iscxx)
-                    {
-                        for (auto &f : analyzerflags)
-                            cmdargs.cxxflags.push_back(f);
-                    }
+                        cmdargs.analyzerflags.push_back(f);
                 }
                 else if (!std::strcmp(arg, "arch") || !std::strcmp(arg, "a"))
                 {
@@ -1184,6 +1179,7 @@ int main(int argc, char **argv)
     string_vector intrinpaths;
     string_vector stdpaths;
     string_vector cxxpaths;
+    string_vector analyzerflags;
     std::string compiler;
     std::string compilerpath;
     std::string compilerbinpath;
@@ -1195,8 +1191,8 @@ int main(int argc, char **argv)
     string_vector cxxflags;
 
     commandargs cmdargs(intrinpaths, stdpaths, cxxpaths, cflags,
-                        cxxflags, target, compiler, compilerpath,
-                        compilerbinpath, env, args, iscxx);
+                        cxxflags, analyzerflags, target, compiler,
+                        compilerpath, compilerbinpath, env, args, iscxx);
 
     const char *cachefile = nullptr;
 
@@ -1437,8 +1433,25 @@ int main(int argc, char **argv)
         }
     }
 
+    if (!analyzerflags.empty() && std::strcmp(argv[argc-1], "-"))
+    {
+        pid_t pid = fork();
+
+        if (pid > 0)
+        {
+            analyzerflags.clear();
+            waitpid(pid, NULL, 0);
+        }
+        else if (pid < 0)
+        {
+            std::cerr << "fork() failed" << std::endl;
+            return  1;
+        }
+    }
+
     if (!cmdargs.cached)
     {
+        if (compiler[0] != '/')
         {
             std::string tmp;
 
@@ -1489,6 +1502,7 @@ int main(int argc, char **argv)
                 args.push_back(flag);
         };
 
+        pushcompilerflags(analyzerflags);
         pushcompilerflags(iscxx ? cxxflags : cflags);
 
         if (!cmdargs.islinkstep || !cmdargs.usemingwlinker)
