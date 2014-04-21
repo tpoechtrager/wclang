@@ -1317,7 +1317,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (!findcxxheaders(target.c_str(), cmdargs))
+    if (!findcxxheaders(target.c_str(), cmdargs) && isxcxx)
     {
         std::cerr << "cannot find " << target
                   << " C++ headers" << std::endl;
