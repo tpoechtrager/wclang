@@ -286,7 +286,7 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
 
 static bool findintrinheaders(commandargs &cmdargs, const std::string &clangdir)
 {
-    std::stringstream dir;
+    std::stringstream intrindir;
     auto &cv = cmdargs.clangversion;
     struct stat st;
 
@@ -294,32 +294,37 @@ static bool findintrinheaders(commandargs &cmdargs, const std::string &clangdir)
     {
         if (!cv.num()) return false;
 
-        dir << cv.s << "/include";
+        intrindir << cv.s << "/include";
 
-        if (!stat(dir.str().c_str(), &st) && S_ISDIR(st.st_mode) &&
+        if (!stat(intrindir.str().c_str(), &st) && S_ISDIR(st.st_mode) &&
             !cmdargs.nointrinsics)
         {
-            cmdargs.intrinpaths.push_back(dir.str());
+            cmdargs.intrinpaths.push_back(intrindir.str());
             return true;
         }
 
         return false;
     };
 
-    dir << clangdir << "/../lib/clang/";
-    cv = findhighestcompilerversion(dir.str().c_str());
+    auto checkdir = [&](const char *dir) -> bool
+    {
+        clear(intrindir);
 
-    if (trydir())
+        intrindir << clangdir << dir << "/";
+        cv = findhighestcompilerversion(intrindir.str().c_str());
+
+        return trydir();
+    };
+
+    if (checkdir("/../lib/clang"))
         return true;
 
-    clear(dir);
-    dir << clangdir << "/../include/clang/";
-    cv = findhighestcompilerversion(dir.str().c_str());
-
-    if (trydir())
+#if defined(__x86_64__) || defined(__LP64__)
+    if (checkdir("/../lib64/clang"))
         return true;
+#endif
 
-    return false;
+    return checkdir("/../include/clang");
 }
 
 static bool findstdheader(const char *target, commandargs &cmdargs)

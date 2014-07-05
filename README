@@ -37,8 +37,8 @@ LISTING AVAILABLE PARAMETERS:
  w32-clang -wc-help
 
 KNOWN TO WORK ON:
- ubuntu, debian (wheezy*), mint, arch, fedora
- other dists may work too, but have not been tested
+ Ubuntu, Debian (Wheezy*), Mint, Arch, Fedora and openSUSE.
+ Other distributions may work too, but have not been tested.
 
 
 * wheezy: important: clang-3.0 coming with wheezy is too old
