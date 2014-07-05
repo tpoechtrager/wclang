@@ -54,7 +54,8 @@ static constexpr const char* TARGET32[] = {
 };
 
 static constexpr const char* TARGET64[] = {
-    "x86_64-w64-mingw32"
+    "x86_64-w64-mingw32",
+    "amd64-mingw32msvc"
 };
 
 /*
