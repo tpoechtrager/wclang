@@ -1,5 +1,5 @@
 #!/bin/sh
-CLANG_BIN=`which clang`
+CLANG_BIN=`which clang 2>/dev/null`
 
 test $? -eq 0 || {
     echo "install clang, then re-run ./bootstrap.sh"
@@ -16,7 +16,7 @@ MINGW_WRONG_PATH=0
 check_mingw_path()
 {
     MINGW_GCC="$1-gcc"
-    MINGW_BIN=`which $MINGW_GCC`
+    MINGW_BIN=`which $MINGW_GCC 2>/dev/null`
 
     if [ $? -eq 0 ]; then
         MINGW_INSTALLED=1
