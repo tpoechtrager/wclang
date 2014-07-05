@@ -52,7 +52,6 @@ AC_TYPE_SIZE_T
 AC_CHECK_FUNCS([strchr strdup strrchr getpid], , exit 1)
 AC_CHECK_FUNCS([execvp gettimeofday setenv getenv], , exit 1)
 AC_CHECK_FUNCS([opendir fork], , exit 1)
-AC_CHECK_FUNCS([readlink])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])

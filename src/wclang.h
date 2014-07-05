@@ -53,7 +53,7 @@ bool listfiles(const char *dir, std::vector<std::string> *files, listfilescallba
 
 typedef bool (*realpathcmp)(const char *file, const struct stat &st);
 std::string &realpath(const char *file, std::string &result, realpathcmp cmp = nullptr);
-std::string &getpathofcommand(const char *bin, std::string &result);
+bool getpathofcommand(const char *bin, std::string &result);
 
 struct compilerversion;
 typedef compilerversion compilerver;

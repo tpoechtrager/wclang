@@ -1,9 +1,4 @@
 #!/bin/sh
-
-if [ -n "$DISABLE_MINGW_CHECK" ]; then
-    exit 0
-fi
-
 CLANG_BIN=`which clang`
 
 test $? -eq 0 || {
@@ -33,17 +28,29 @@ check_mingw_path()
         else
             MINGW_DIRS="$MINGW_PATH"
         fi
+
+        if [ ! -f "$CLANG_PATH/$MINGW_GCC" ]; then
+            MINGW_WRONG_PATH=1
+
+            echo ""
+            echo "$MINGW_GCC found but is not in the same directory as the clang binary!"
+            echo "Please run 'ln -sf $MINGW_PATH/$1* $CLANG_PATH/' to fix this issue."
+            echo ""
+        fi
     fi
 }
 
 check_mingw_path i686-w64-mingw32
-check_mingw_path i686-pc-mingw32
 check_mingw_path x86_64-w64-mingw32
-check_mingw_path x86_64-pc-mingw32
 check_mingw_path i486-mingw32
 check_mingw_path i586-mingw32
 check_mingw_path i586-mingw32msvc
 check_mingw_path amd64-mingw32msvc
+
+test $MINGW_WRONG_PATH -eq 0 || {
+    echo "then re-run ./bootstrap.sh"
+    exit 1
+}
 
 if [ $MINGW_INSTALLED -eq 0 ]; then
     echo "mingw-w64 is not installed or not in PATH variable."

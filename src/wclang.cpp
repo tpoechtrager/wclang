@@ -54,9 +54,7 @@ static constexpr const char* TARGET32[] = {
 };
 
 static constexpr const char* TARGET64[] = {
-    "x86_64-w64-mingw32",
-    "x86_64-pc-mingw32",
-    "amd64-mingw32msvc",
+    "x86_64-w64-mingw32"
 };
 
 /*
@@ -646,25 +644,11 @@ std::string &realpath(const char *file, std::string &result, realpathcmp cmp)
         sfile.clear();
     } while (*p);
 
-#ifdef HAVE_READLINK
-    if (!sfile.empty())
-    {
-        char buf[PATH_MAX+1];
-        ssize_t len;
-
-        if ((len = readlink(sfile.c_str(), buf, PATH_MAX)) != -1)
-        {
-            sfile.resize(sfile.find_last_of("/")+1);
-            sfile.append(buf, len);
-        }
-    }
-#endif
-
     result.swap(sfile);
     return result;
 }
 
-std::string &getpathofcommand(const char *command, std::string &result)
+bool getpathofcommand(const char *command, std::string &result)
 {
     realpath(command, result, [](const char *f, const struct stat&){
         return !access(f, F_OK|X_OK);
@@ -675,7 +659,7 @@ std::string &getpathofcommand(const char *command, std::string &result)
     if (pos != std::string::npos)
         result.resize(pos);
 
-    return result;
+    return !result.empty();
 }
 
 template<class... T>
@@ -1473,9 +1457,7 @@ int main(int argc, char **argv)
         {
             std::string tmp;
 
-            getpathofcommand(compiler.c_str(), compilerbinpath);
-
-            if (compilerbinpath.empty())
+            if (!getpathofcommand(compiler.c_str(), compilerbinpath))
             {
                 std::cerr << "cannot find '" << compiler << "' executable"
                           << std::endl;
@@ -1508,8 +1490,21 @@ int main(int argc, char **argv)
             if (mingwpath && *mingwpath)
                 concatenvvariable("PATH", mingwpath);
 
-            getpathofcommand(gcc.c_str(), path);
+            if (!getpathofcommand(gcc.c_str(), path))
+            {
+                std::cerr << "cannot find " << gcc << " executable" << std::endl;
+                return 1;
+            }
+
+#if 0
+            /*
+             * COMPILER_PATH would be a perfect solution to get rid of the
+             * MinGW-GCC symlinks, but unfortunately it causes MinGW-GCC
+             * to use the wrong assembler/linker on some sytems.
+             * GCC is invoked for assembling (prior to clang 3.5) and linking.
+             */
             concatenvvariable("COMPILER_PATH", path, &cmdargs.compilerpath);
+#endif
         }
 
         args.push_back(compiler);
@@ -1643,8 +1638,10 @@ int main(int argc, char **argv)
         printtimes();
     }
 
+#if 0
     if (cmdargs.cached && !cmdargs.compilerpath.empty())
         setenv("COMPILER_PATH", cmdargs.compilerpath.c_str(), 1);
+#endif
 
     execvp(compiler.c_str(), cargs);
 
