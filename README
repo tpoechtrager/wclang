@@ -1,5 +1,5 @@
-Wclang is a tool which helps you to cross compile source code easily with clang on linux for windows.
-Wclang is basically a wrapper for clang, which allows you to directly target windows.
+Wclang is a tool which helps you to cross compile source code easily with clang on Linux/Unix for Windows.
+Wclang is basically a wrapper for clang, which allows you to directly target Windows.
 Wclang detects the target and headers automatically and adds them to the clang invocation command.
 
 After the installation you will have "w32-clang", "w32-clang++", "w64-clang" and "w64-clang++" available as "compiler".
@@ -37,10 +37,11 @@ LISTING AVAILABLE PARAMETERS:
  w32-clang -wc-help
 
 KNOWN TO WORK ON:
- Ubuntu, Debian (Wheezy*), Mint, Arch, Fedora and openSUSE.
- Other distributions may work too, but have not been tested.
 
+ Linux:   Ubuntu, Debian (Wheezy*), Mint, Arch, Fedora and openSUSE.
+          Other distributions may work as well, but have not been tested.
+ Windows: Cygwin.
 
-* wheezy: important: clang-3.0 coming with wheezy is too old
+* Wheezy: important: clang-3.0 coming with wheezy is too old
   to compile the wrapper, so use g++ or get a newer clang
-  from e.g: http://llvm.org/apt/
+  from e.g.: http://llvm.org/apt.

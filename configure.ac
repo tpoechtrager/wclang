@@ -36,7 +36,7 @@ AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_AWK
 AC_PROG_MKDIR_P
-AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
+AX_CXX_COMPILE_STDCXX_11(ext, mandatory)
 AX_CXX_STDCHRONO
 
 # Checks for libraries.
