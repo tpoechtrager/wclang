@@ -1,10 +1,10 @@
 #!/bin/sh
 CLANG_BIN=`which clang 2>/dev/null`
 
-test $? -eq 0 || {
-    echo "install clang, then re-run ./bootstrap.sh"
+if [ $? -ne 0 ]; then
+    echo "install clang - then re-run ./bootstrap.sh."
     exit 1
-}
+fi
 
 CLANG_BIN=`readlink -f $CLANG_BIN`
 CLANG_PATH=`dirname $CLANG_BIN`
@@ -42,15 +42,17 @@ check_mingw_path()
 
 check_mingw_path i686-w64-mingw32
 check_mingw_path x86_64-w64-mingw32
+check_mingw_path i686-w64-mingw32.static    # MXE
+check_mingw_path x86_64-w64-mingw32.static  # MXE
 check_mingw_path i486-mingw32
 check_mingw_path i586-mingw32
 check_mingw_path i586-mingw32msvc
 check_mingw_path amd64-mingw32msvc
 
-test $MINGW_WRONG_PATH -eq 0 || {
+if [ $MINGW_WRONG_PATH -eq 1 ]; then
     echo "then re-run ./bootstrap.sh"
     exit 1
-}
+fi
 
 if [ $MINGW_INSTALLED -eq 0 ]; then
     echo "mingw-w64 is not installed or not in PATH variable."

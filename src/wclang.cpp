@@ -47,6 +47,7 @@ enum {
 
 static constexpr const char* TARGET32[] = {
     "i686-w64-mingw32",
+    "i686-w64-mingw32.static", /* MXE */
     "i686-pc-mingw32",
     "i586-mingw32",
     "i586-mingw32msvc",
@@ -55,6 +56,7 @@ static constexpr const char* TARGET32[] = {
 
 static constexpr const char* TARGET64[] = {
     "x86_64-w64-mingw32",
+    "x86_64-w64-mingw32.static", /* MXE */
     "amd64-mingw32msvc"
 };
 
@@ -447,7 +449,7 @@ static const char *findtriple(const char *name, int &targettype)
 
     for (const char *target : TARGET32)
     {
-        if (!std::strncmp(target, name, len))
+        if (!std::strncmp(target, name, len) && !target[len])
         {
             targettype = TARGET_WIN32;
             return target;
@@ -456,7 +458,7 @@ static const char *findtriple(const char *name, int &targettype)
 
     for (const char *target : TARGET64)
     {
-        if (!std::strncmp(target, name, len))
+        if (!std::strncmp(target, name, len) && !target[len])
         {
             targettype = TARGET_WIN64;
             return target;

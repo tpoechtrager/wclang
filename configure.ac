@@ -12,25 +12,33 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
 
 # Checks for programs.
-m4_define([CHECK_MINGW], esyscmd([scripts/check_mingw.sh]))
-ifelse(m4_sysval, 0, , [echo "CHECK_MINGW"; exit 1])
+m4_define([mingw_path], esyscmd([scripts/check_mingw.sh]))
+ifelse(m4_sysval, 0, , [echo "mingw_path"; exit 1])
 
-m4_define([CLANG_TARGET_OPT], m4_esyscmd([scripts/check_clang_target_option.sh]))
+m4_define([clang_target_opt], m4_esyscmd([scripts/check_clang_target_option.sh]))
 
 ifelse(m4_sysval, 0, , [
     echo "unable to determine clang target option"
     echo "clang not installed?"
     exit 1])
 
-CXXFLAGS="${CXXFLAGS} -DCLANG_TARGET_OPT="
-CXXFLAGS="${CXXFLAGS}\"\\\""
-CXXFLAGS="${CXXFLAGS}"CLANG_TARGET_OPT
-CXXFLAGS="${CXXFLAGS}\\\"\""
+CLANG_TARGET_OPT="-DCLANG_TARGET_OPT="
+CLANG_TARGET_OPT="${CLANG_TARGET_OPT}\"\\\""
+CLANG_TARGET_OPT="${CLANG_TARGET_OPT}"clang_target_opt
+CLANG_TARGET_OPT="${CLANG_TARGET_OPT}\\\"\""
 
-CXXFLAGS="${CXXFLAGS} -DMINGW_PATH="
-CXXFLAGS="${CXXFLAGS}\"\\\""
-CXXFLAGS="${CXXFLAGS}"CHECK_MINGW
-CXXFLAGS="${CXXFLAGS}\\\"\""
+MINGW_PATH="-DMINGW_PATH="
+MINGW_PATH="${MINGW_PATH}\"\\\""
+MINGW_PATH="${MINGW_PATH}"mingw_path
+MINGW_PATH="${MINGW_PATH}\\\"\""
+
+AC_SUBST(CLANG_TARGET_OPT)
+AC_SUBST(MINGW_PATH)
+
+ifelse(m4_sysval, 0, , [
+    echo "unable to determine clang target option"
+    echo "clang not installed?"
+    exit 1])
 
 AC_PROG_CXX
 AC_PROG_INSTALL
