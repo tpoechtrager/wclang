@@ -54,7 +54,9 @@ foreach(TRIPLET ${TRIPLETS})
     list (APPEND VALID_TRIPLETS ${TRIPLET})
   endif ()
 endforeach ()
-
+if (NOT VALID_TRIPLETS)
+  message (SEND_ERROR "mingw-gcc was not found")
+endif ()
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
