@@ -1,7 +1,13 @@
 add_executable(wclang wclang.cpp wclang_time.cpp wclang_cache.cpp)
 install(TARGETS wclang DESTINATION bin)
 
-foreach (TRIPLET ${VALID_TRIPLETS})
+option(SYMLINK_ALL_TRIPLETS "symlink all triplets" OFF)
+set(SYMLINK_TRIPLETS ${VALID_TRIPLETS})
+if(SYMLINK_ALL_TRIPLETS)
+  set(SYMLINK_TRIPLETS ${TRIPLETS})
+endif ()
+
+foreach (TRIPLET ${SYMLINK_TRIPLETS})
   install(CODE "set(FINAL_DIR ${CMAKE_INSTALL_PREFIX})
                 if(NOT \"\$ENV{DESTDIR}\" STREQUAL \"\")
                   set(FINAL_DIR \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX})
