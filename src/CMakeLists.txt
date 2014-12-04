@@ -1,10 +1,6 @@
 add_executable(wclang wclang.cpp wclang_time.cpp wclang_cache.cpp)
 install(TARGETS wclang DESTINATION bin)
 
-#if(CMAKE_HOST_UNIX)
-#  install(SCRIPT ${CMAKE_SOURCE_DIR}/cmake/install-symlinks.cmake)
-#endif()
-
 foreach (TRIPLET ${VALID_TRIPLETS})
   install(CODE "set(FINAL_DIR ${CMAKE_INSTALL_PREFIX})
                 if(NOT \"\$ENV{DESTDIR}\" STREQUAL \"\")
