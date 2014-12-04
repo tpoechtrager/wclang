@@ -9,10 +9,11 @@ PREREQUISITES:
  A C++11 compiler for compiling the wrapper (g++ 4.6+, clang)
  clang
  mingw-w64 with its headers and libs
+ cmake
 
 INSTALLATION:
 
- cmake .
+ cmake -DCMAKE_INSTALL_PREFIX=_prefix_ .
  make
  make install
 
