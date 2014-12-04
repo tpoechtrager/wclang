@@ -1555,10 +1555,10 @@ int main(int argc, char **argv)
                     if (!cmdargs.nointrinsics)
                         warn("cannot find clang intrinsics directory");
                 }
-                else if (cmdargs.clangversion >= compilerver(3, 5))
+                else if (cmdargs.clangversion == compilerver(3, 5, 0))
                 {
                     /*
-                     * Workaround for clang 3.5+ to get rid of
+                     * Workaround for clang 3.5.0 to get rid of
                      * error: redeclaration of '_scanf_l' cannot add 'dllimport' attribute
                      */
                     args.push_back("-D_STDIO_S_DEFINED");

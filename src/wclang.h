@@ -94,6 +94,11 @@ struct compilerversion {
         return num() <= cv.num();
     }
 
+    constexpr bool operator==(const compilerversion &cv) const
+    {
+        return num() == cv.num();
+    }
+
     constexpr bool operator!=(const compilerversion &cv) const
     {
         return num() != cv.num();
