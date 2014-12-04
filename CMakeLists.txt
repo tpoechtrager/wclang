@@ -33,8 +33,12 @@ check_function_exists(gettimeofday HAVE_GETTIMEOFDAY)
 check_function_exists(opendir HAVE_OPENDIR)
 
 
-
-
+include(CheckCXXCompilerFlag)
+set(WARNING_FLAGS "-pedantic -Wall -Wextra -Wno-unused-parameter")
+check_cxx_compiler_flag("${WARNING_FLAGS}" _SUPPORT_WARNING_FLAGS)
+if (_SUPPORT_WARNING_FLAGS)
+  set(CMAKE_CXX_FLAGS "${WARNING_FLAGS} ${CMAKE_CXX_FLAGS}")
+endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 find_package(CXX11 REQUIRED)
