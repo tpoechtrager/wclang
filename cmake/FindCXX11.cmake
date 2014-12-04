@@ -12,10 +12,10 @@ include(CheckCXXSourceCompiles)
 include(FindPackageHandleStandardArgs)
 
 set(CXX11_FLAG_CANDIDATES
-    #Gnu and Intel Linux
-    "-std=c++0x"
     # cygwin
     "-std=gnu++0x"
+    #Gnu and Intel Linux
+    "-std=c++0x"
     #Microsoft Visual Studio, and everything that automatically accepts C++11
     " "
     #Intel windows
