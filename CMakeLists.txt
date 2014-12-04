@@ -55,7 +55,19 @@ if (CLANG_C_COMPILER)
 else ()
   message (SEND_ERROR "clang was not found")
 endif ()
-add_definitions(-DCLANG_TARGET_OPT=\"-target\")
+execute_process(COMMAND ${CLANG_C_COMPILER} --version
+                OUTPUT_VARIABLE CLANG_VERSION
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                )
+string(REGEX REPLACE ".*version ([0-9\\.]+) .*"
+         "\\1" CLANG_VERSION
+         ${CLANG_VERSION})
+if (CLANG_VERSION VERSION_GREATER 3.0)
+  set(CLANG_TARGET_OPT_FLAG -target)
+else ()
+  set(CLANG_TARGET_OPT_FLAG -ccc-host-triple)
+endif ()
+add_definitions(-DCLANG_TARGET_OPT=\"${CLANG_TARGET_OPT_FLAG}\")
 get_filename_component(CLANG_PATH ${CLANG_C_COMPILER} PATH)
 
 set(TRIPLETS i686-w64-mingw32 x86_64-w64-mingw32)
