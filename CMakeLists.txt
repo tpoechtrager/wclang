@@ -63,3 +63,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(src)
 
+
+
+set ( CPACK_SOURCE_GENERATOR      "TGZ;TBZ2"     )
+set ( CPACK_SOURCE_IGNORE_FILES "/.git;.*~;${CPACK_SOURCE_IGNORE_FILES}" )
+set( CPACK_SOURCE_PACKAGE_FILE_NAME ${PACKAGE_NAME}-${PACKAGE_VERSION} )
+include(CPack)
