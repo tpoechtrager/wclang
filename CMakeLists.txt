@@ -2,12 +2,34 @@ cmake_minimum_required(VERSION 2.8)
 project(wclang)
 
 
-include(CheckFunctionExists)
-check_function_exists(getpid HAVE_GETPID) 
-check_function_exists(unsetenv HAVE_UNSETENV)
-
 include(CheckIncludeFiles)
 check_include_files(sys/types.h HAVE_SYS_TYPES_H)
+check_include_files(sys/stat.h HAVE_SYS_STAT_H)
+check_include_files(string.h HAVE_STRING_H)
+check_include_files(strings.h HAVE_STRINGS_H)
+check_include_files(unistd.h HAVE_UNISTD_H)
+check_include_files(inttypes.h HAVE_INTTYPES_H)
+check_include_files(memory.h HAVE_MEMORY_H)
+check_include_files(stdint.h HAVE_STDINT_H)
+check_include_files(stdlib.h HAVE_STDLIB_H)
+
+
+include(CheckFunctionExists)
+check_function_exists(getpid HAVE_GETPID)
+check_function_exists(unsetenv HAVE_UNSETENV)
+check_function_exists(strrchr HAVE_STRRCHR)
+check_function_exists(strchr HAVE_STRCHR)
+check_function_exists(strdup HAVE_STRDUP)
+check_function_exists(fork HAVE_FORK)
+check_function_exists(execvp HAVE_EXECVP)
+check_function_exists(getenv HAVE_GETENV)
+check_function_exists(setenv HAVE_SETENV)
+check_function_exists(gettimeofday HAVE_GETTIMEOFDAY)
+check_function_exists(opendir HAVE_OPENDIR)
+
+
+
+
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 find_package(CXX11 REQUIRED)
@@ -34,7 +56,7 @@ else ()
   message (SEND_ERROR "clang was not found")
 endif ()
 add_definitions(-DCLANG_TARGET_OPT=\"-target\")
-get_filename_component(CLANG_PATH ${CLANG_C_COMPILER} DIRECTORY)
+get_filename_component(CLANG_PATH ${CLANG_C_COMPILER} PATH)
 
 set(TRIPLETS i686-w64-mingw32 x86_64-w64-mingw32)
 list(APPEND TRIPLETS i686-w64-mingw32.static x86_64-w64-mingw32.static)
@@ -46,7 +68,7 @@ foreach(TRIPLET ${TRIPLETS})
   unset(MINGW_C_COMPILER CACHE)
   find_program(MINGW_C_COMPILER NAMES ${TRIPLET}-gcc)
   if(MINGW_C_COMPILER)
-    get_filename_component(MINGW_PATH ${MINGW_C_COMPILER} DIRECTORY)
+    get_filename_component(MINGW_PATH ${MINGW_C_COMPILER} PATH)
     message(STATUS "Found mingw-gcc: ${MINGW_C_COMPILER}")
     if (NOT MINGW_PATH STREQUAL CLANG_PATH)
       message (WARNING "mingw-gcc found (${MINGW_C_COMPILER}) but is not in the same directory as the clang binary (${CLANG_C_COMPILER})")
