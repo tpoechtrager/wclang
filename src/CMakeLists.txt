@@ -1,0 +1,17 @@
+add_executable(wclang wclang.cpp wclang_time.cpp wclang_cache.cpp)
+install(TARGETS wclang DESTINATION bin)
+
+#if(CMAKE_HOST_UNIX)
+#  install(SCRIPT ${CMAKE_SOURCE_DIR}/cmake/install-symlinks.cmake)
+#endif()
+
+foreach (TRIPLET ${VALID_TRIPLETS})
+  install(CODE "set(FINAL_DIR ${CMAKE_INSTALL_PREFIX})
+                if(NOT \"\$ENV{DESTDIR}\" STREQUAL \"\")
+                  set(FINAL_DIR \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX})
+                endif()
+                message(STATUS \"Installing: \${FINAL_DIR}/bin/${TRIPLET}-clang\")
+                execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink wclang \${TRIPLET}-clang WORKING_DIRECTORY \${FINAL_DIR}/bin)
+                message(STATUS \"Installing: \${FINAL_DIR}/bin/${TRIPLET}-clang++\")
+                execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink wclang ${TRIPLET}-clang++ WORKING_DIRECTORY \${FINAL_DIR}/bin)")
+endforeach()
