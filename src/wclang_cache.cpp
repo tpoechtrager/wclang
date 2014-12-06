@@ -104,7 +104,10 @@ void writecache(commandargs &cmdargs)
 void loadcache(const char *filename, commandargs &cmdargs)
 {
     std::ifstream in(filename, std::ios::binary);
+
+#ifndef NDEBUG
     bool iscxx = cmdargs.iscxx;
+#endif
 
     auto error = [&]()
     {
