@@ -1,97 +1,97 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* define if the compiler supports basic C++11 syntax */
-#undef HAVE_CXX11
+#cmakedefine HAVE_CXX11
 
 /* Define to 1 if you have the `execvp' function. */
-#undef HAVE_EXECVP
+#cmakedefine HAVE_EXECVP
 
 /* Define to 1 if you have the `fork' function. */
-#undef HAVE_FORK
+#cmakedefine HAVE_FORK
 
 /* Define to 1 if you have the `getenv' function. */
-#undef HAVE_GETENV
+#cmakedefine HAVE_GETENV
 
 /* Define to 1 if you have the `getpid' function. */
-#undef HAVE_GETPID
+#cmakedefine HAVE_GETPID
 
 /* Define to 1 if you have the `gettimeofday' function. */
-#undef HAVE_GETTIMEOFDAY
+#cmakedefine HAVE_GETTIMEOFDAY
 
 /* Define to 1 if you have the <inttypes.h> header file. */
-#undef HAVE_INTTYPES_H
+#cmakedefine HAVE_INTTYPES_H
 
 /* Define to 1 if you have the <memory.h> header file. */
-#undef HAVE_MEMORY_H
+#cmakedefine HAVE_MEMORY_H
 
 /* Define to 1 if you have the `opendir' function. */
-#undef HAVE_OPENDIR
+#cmakedefine HAVE_OPENDIR
 
 /* Define to 1 if you have the `setenv' function. */
-#undef HAVE_SETENV
+#cmakedefine HAVE_SETENV
 
 /* Define to 1 if you have the <stdint.h> header file. */
-#undef HAVE_STDINT_H
+#cmakedefine HAVE_STDINT_H
 
 /* Define to 1 if you have the <stdlib.h> header file. */
-#undef HAVE_STDLIB_H
+#cmakedefine HAVE_STDLIB_H
 
 /* define if std::chrono is suppored */
-#undef HAVE_STD_CHRONO
+#cmakedefine HAVE_STD_CHRONO
 
 /* Define to 1 if you have the `strchr' function. */
-#undef HAVE_STRCHR
+#cmakedefine HAVE_STRCHR
 
 /* Define to 1 if you have the `strdup' function. */
-#undef HAVE_STRDUP
+#cmakedefine HAVE_STRDUP
 
 /* Define to 1 if you have the <strings.h> header file. */
-#undef HAVE_STRINGS_H
+#cmakedefine HAVE_STRINGS_H
 
 /* Define to 1 if you have the <string.h> header file. */
-#undef HAVE_STRING_H
+#cmakedefine HAVE_STRING_H
 
 /* Define to 1 if you have the `strrchr' function. */
-#undef HAVE_STRRCHR
+#cmakedefine HAVE_STRRCHR
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
-#undef HAVE_SYS_STAT_H
+#cmakedefine HAVE_SYS_STAT_H
 
 /* Define to 1 if you have the <sys/types.h> header file. */
-#undef HAVE_SYS_TYPES_H
+#cmakedefine HAVE_SYS_TYPES_H
 
 /* Define to 1 if you have the <unistd.h> header file. */
-#undef HAVE_UNISTD_H
+#cmakedefine HAVE_UNISTD_H
 
 /* Define to 1 if the system has the type `_Bool'. */
-#undef HAVE__BOOL
+#cmakedefine HAVE__BOOL
 
 /* Name of package */
-#undef PACKAGE
+#cmakedefine PACKAGE "@PACKAGE@"
 
 /* Define to the address where bug reports for this package should be sent. */
-#undef PACKAGE_BUGREPORT
+#cmakedefine PACKAGE_BUGREPORT "@PACKAGE_BUGREPORT@"
 
 /* Define to the full name of this package. */
-#undef PACKAGE_NAME
+#define PACKAGE_NAME "@PACKAGE_NAME@"
 
 /* Define to the full name and version of this package. */
-#undef PACKAGE_STRING
+#cmakedefine PACKAGE_STRING "@PACKAGE_STRING@"
 
 /* Define to the one symbol short name of this package. */
-#undef PACKAGE_TARNAME
+#cmakedefine PACKAGE_TARNAME "@PACKAGE_TARNAME@"
 
 /* Define to the home page for this package. */
-#undef PACKAGE_URL
+#cmakedefine PACKAGE_URL "@PACKAGE_URL@"
 
 /* Define to the version of this package. */
-#undef PACKAGE_VERSION
+#cmakedefine PACKAGE_VERSION "@PACKAGE_VERSION@"
 
 /* Define to 1 if you have the ANSI C header files. */
-#undef STDC_HEADERS
+#cmakedefine STDC_HEADERS
 
 /* Version number of package */
-#undef VERSION
+#cmakedefine VERSION "@VERSION@"
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
-#undef size_t
+#cmakedefine size_t

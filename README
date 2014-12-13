@@ -2,18 +2,18 @@ Wclang is a tool which helps you to cross compile source code easily with clang 
 Wclang is basically a wrapper for clang, which allows you to directly target Windows.
 Wclang detects the target and headers automatically and adds them to the clang invocation command.
 
-After the installation you will have "w32-clang", "w32-clang++", "w64-clang" and "w64-clang++" available as "compiler".
+After the installation you will have "<mingw-triplet>-clang", "<mingw-triplet>-clang++" available as "compiler".
 
 PREREQUISITES:
 
  A C++11 compiler for compiling the wrapper (g++ 4.6+, clang)
  clang
  mingw-w64 with its headers and libs
+ cmake
 
 INSTALLATION:
 
- ./bootstrap.sh
- ./configure
+ cmake -DCMAKE_INSTALL_PREFIX=_prefix_ .
  make
  make install
 
@@ -24,9 +24,6 @@ UPDATING:
 
 EXAMPLES:
 
- w32-clang++ hello-world.cpp -o hello-world.exe && wine hello-world
- CC=w32-clang ./configure --host=`w32-clang -wc-target`
-
  i686-w64-mingw32-clang++ hello-world.cpp -o hello-world.exe && wine hello-world
  CC=i686-w64-mingw32-clang ./configure --host=i686-w64-mingw32
 
@@ -34,7 +31,7 @@ EXAMPLES:
  CC=x86_64-w64-mingw32-clang ./configure --host=x86-64-w64-mingw32
 
 LISTING AVAILABLE PARAMETERS:
- w32-clang -wc-help
+ i686-w64-clang -wc-help
 
 KNOWN TO WORK ON:
 
