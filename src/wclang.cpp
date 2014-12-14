@@ -771,7 +771,7 @@ static void parseargs(int argc, char **argv, const char *target,
 
     auto printheader = []()
     {
-        std::cout << PACKAGE_NAME << ", Version: " << VERSION << std::endl;
+        std::cout << PACKAGE_NAME << ", Version: " << PACKAGE_VERSION << std::endl;
     };
 
     for (int i = 0; i < argc; ++i)
