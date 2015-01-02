@@ -68,7 +68,7 @@ execute_process ( COMMAND ${CLANG_C_COMPILER} --version
                   OUTPUT_VARIABLE CLANG_VERSION
                   OUTPUT_STRIP_TRAILING_WHITESPACE
                 )
-string (REGEX REPLACE ".*version ([0-9\\.]+) .*"
+string (REGEX REPLACE ".*version ([0-9\\.]+).*"
          "\\1" CLANG_VERSION
          ${CLANG_VERSION})
 if (CLANG_VERSION VERSION_GREATER 3.0)
