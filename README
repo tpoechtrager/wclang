@@ -17,11 +17,6 @@ INSTALLATION:
  make
  make install
 
-UPDATING:
-
- If you are updating a previous wclang installation, then don't forget
- to re-run ./bootstrap.sh, otherwise ./configure will most likely fail.
-
 EXAMPLES:
 
  i686-w64-mingw32-clang++ hello-world.cpp -o hello-world.exe && wine hello-world
