@@ -48,6 +48,7 @@ enum {
 static constexpr const char* TARGET32[] = {
     "i686-w64-mingw32",
     "i686-w64-mingw32.static", /* MXE */
+    "i686-w64-mingw32.shared", /* MXE */
     "i686-pc-mingw32",
     "i586-mingw32",
     "i586-mingw32msvc",
@@ -57,6 +58,7 @@ static constexpr const char* TARGET32[] = {
 static constexpr const char* TARGET64[] = {
     "x86_64-w64-mingw32",
     "x86_64-w64-mingw32.static", /* MXE */
+    "x86_64-w64-mingw32.shared", /* MXE */
     "amd64-mingw32msvc"
 };
 
@@ -372,6 +374,15 @@ static bool findstdheader(const char *target, commandargs &cmdargs)
         dir += "/";
         dir += target;
         dir += "/sys-root/mingw/include";
+
+        if (trydir(dir))
+            return true;
+
+        // MXE
+        dir = stdinclude;
+        dir += "/usr/";
+        dir += target;
+        dir += "/include";
 
         if (trydir(dir))
             return true;

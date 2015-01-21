@@ -81,6 +81,7 @@ get_filename_component(CLANG_PATH ${CLANG_C_COMPILER} PATH)
 
 set (TRIPLETS i686-w64-mingw32 x86_64-w64-mingw32)
 list (APPEND TRIPLETS i686-w64-mingw32.static x86_64-w64-mingw32.static)
+list (APPEND TRIPLETS i686-w64-mingw32.shared x86_64-w64-mingw32.shared)
 list (APPEND TRIPLETS i486-mingw32 i586-mingw32)
 list (APPEND TRIPLETS i586-mingw32msvc amd64-mingw32msvc)
 
