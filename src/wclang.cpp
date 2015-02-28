@@ -1415,27 +1415,6 @@ int main(int argc, char **argv)
         }
     }
 
-    if (cmdargs.exceptions != 0)
-    {
-        char *p;
-        if (!(p = getenv("WCLANG_FORCE_CXX_EXCEPTIONS")) || *p == '0')
-        {
-            if (cmdargs.exceptions == 1)
-            {
-                warn("-fexceptions will be replaced with -fno-exceptions: "
-                     "exceptions are not supported (yet)");
-
-                std::cerr << "set WCLANG_FORCE_CXX_EXCEPTIONS to 1 "
-                          << "(env. variable) to force C++ exceptions" << std::endl;
-            }
-
-            cxxflags.push_back("-fno-exceptions");
-        }
-        else {
-            cmdargs.exceptions = -1;
-        }
-    }
-
     if (!analyzerflags.empty() && std::strcmp(argv[argc-1], "-"))
     {
         pid_t pid = fork();
@@ -1559,20 +1538,52 @@ int main(int argc, char **argv)
                 }
             };
 
-            if (!cmdargs.islinkstep || !cmdargs.usemingwlinker)
+            if (!findintrinheaders(cmdargs, compilerbinpath))
             {
-                if (!findintrinheaders(cmdargs, compilerbinpath))
+                if (!cmdargs.nointrinsics)
+                    warn("cannot find clang intrinsics directory");
+            }
+            else if (cmdargs.clangversion == compilerver(3, 5, 0))
+            {
+                /*
+                 * Workaround for clang 3.5.0 to get rid of
+                 * error: redeclaration of '_scanf_l' cannot add 'dllimport' attribute
+                 */
+                args.push_back("-D_STDIO_S_DEFINED");
+            }
+
+            if (cmdargs.exceptions != 0 && (cmdargs.clangversion < compilerver(3, 7, 0) ||
+                targettype == TARGET_WIN32))
+            {
+                char *p;
+                if (!(p = getenv("WCLANG_FORCE_CXX_EXCEPTIONS")) || *p == '0')
                 {
-                    if (!cmdargs.nointrinsics)
-                        warn("cannot find clang intrinsics directory");
+                    if (cmdargs.exceptions == 1)
+                    {
+                        warn("-fexceptions will be replaced with -fno-exceptions: "
+                            "exceptions are not supported (yet)");
+
+                        std::cerr << "set WCLANG_FORCE_CXX_EXCEPTIONS to 1 "
+                                << "(env. variable) to force C++ exceptions" << std::endl;
+                    }
+
+                    args.push_back("-fno-exceptions");
                 }
-                else if (cmdargs.clangversion == compilerver(3, 5, 0))
+                else {
+                    cmdargs.exceptions = -1;
+                }
+            }
+
+            if (!(p = getenv("WCLANG_NO_DEFINE_SIZED_DEALLOCATION")) || *p != '1')
+            {
+                if (!cmdargs.islinkstep && cmdargs.clangversion >= compilerver(3, 7, 0))
                 {
                     /*
-                     * Workaround for clang 3.5.0 to get rid of
-                     * error: redeclaration of '_scanf_l' cannot add 'dllimport' attribute
+                     * Required to link against gcc <= 4.9 libstdc++ with
+                     * clang >= 3.7
                      */
-                    args.push_back("-D_STDIO_S_DEFINED");
+                    args.push_back("-Xclang");
+                    args.push_back("-fdefine-sized-deallocation");
                 }
             }
 
