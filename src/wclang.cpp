@@ -1561,29 +1561,16 @@ int main(int argc, char **argv)
                     if (cmdargs.exceptions == 1)
                     {
                         warn("-fexceptions will be replaced with -fno-exceptions: "
-                            "exceptions are not supported (yet)");
+                             "exceptions are not supported (yet)");
 
                         std::cerr << "set WCLANG_FORCE_CXX_EXCEPTIONS to 1 "
-                                << "(env. variable) to force C++ exceptions" << std::endl;
+                                  << "(env. variable) to force C++ exceptions" << std::endl;
                     }
 
                     args.push_back("-fno-exceptions");
                 }
                 else {
                     cmdargs.exceptions = -1;
-                }
-            }
-
-            if (!(p = getenv("WCLANG_NO_DEFINE_SIZED_DEALLOCATION")) || *p != '1')
-            {
-                if (!cmdargs.islinkstep && cmdargs.clangversion >= compilerver(3, 7, 0))
-                {
-                    /*
-                     * Required to link against gcc <= 4.9 libstdc++ with
-                     * clang >= 3.7
-                     */
-                    args.push_back("-Xclang");
-                    args.push_back("-fdefine-sized-deallocation");
                 }
             }
 
