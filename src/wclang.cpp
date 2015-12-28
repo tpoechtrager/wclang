@@ -840,6 +840,15 @@ static void parseargs(int argc, char **argv, const char *target,
                     cmdargs.usemingwlinker = 3;
                     continue;
                 }
+                else if (!std::strcmp(arg, "-mconsole") && !cmdargs.usemingwlinker)
+                {
+                    /*
+                     * Clang doesn't support -mconsole (yet)
+                     */
+
+                    cmdargs.usemingwlinker = 4;
+                    continue;
+                }
                 break;
             }
             case 'o':
@@ -1388,7 +1397,7 @@ int main(int argc, char **argv)
 
         if (cmdargs.usemingwlinker > 1)
         {
-            constexpr const char *desc[] = { "-mwindows", "-mdll" };
+            constexpr const char *desc[] = { "-mwindows", "-mdll", "-mconsole" };
             size_t index = cmdargs.usemingwlinker-2;
             warn("linking with % because of unimplemented %", compiler, desc[index]);
         }
