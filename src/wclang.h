@@ -55,6 +55,11 @@ typedef bool (*realpathcmp)(const char *file, const struct stat &st);
 std::string &realpath(const char *file, std::string &result, realpathcmp cmp = nullptr);
 bool getpathofcommand(const char *bin, std::string &result);
 
+constexpr int RUNCOMMAND_ERROR = -100000;
+int runcommand(const char *command, char *buf, size_t len);
+
+void stripfilename(char *path);
+
 struct compilerversion;
 typedef compilerversion compilerver;
 compilerver parsecompilerversion(const char *compilerversion);
@@ -166,6 +171,7 @@ struct commandargs {
     string_vector &cflags;
     string_vector &cxxflags;
     string_vector &analyzerflags;
+    string_vector &linkerflags;
     std::string &target;
     std::string &compiler;
     std::string &compilerpath;
@@ -183,12 +189,13 @@ struct commandargs {
 
     commandargs(string_vector &intrinpaths, string_vector &stdpaths, string_vector &cxxpaths,
                 string_vector &cflags, string_vector &cxxflags, string_vector &analyzerflags,
-                std::string &target, std::string &compiler, std::string &compilerpath,
-                std::string &compilerbinpath, string_vector &env, string_vector &args, bool &iscxx)
+                string_vector &linkerflags, std::string &target, std::string &compiler,
+                std::string &compilerpath, std::string &compilerbinpath, string_vector &env,
+                string_vector &args, bool &iscxx)
                 :
                 cached(false), verbose(false), intrinpaths(intrinpaths), stdpaths(stdpaths),
                 cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags), analyzerflags(analyzerflags),
-                target(target), compiler(compiler), compilerpath(compilerpath),
+                linkerflags(linkerflags), target(target), compiler(compiler), compilerpath(compilerpath),
                 compilerbinpath(compilerbinpath), env(env), args(args), iscxx(iscxx),
                 appendexe(false), iscompilestep(false), islinkstep(false), nointrinsics(false),
                 exceptions(-1), optimizationlevel(0), usemingwlinker(0) {}

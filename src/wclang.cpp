@@ -681,6 +681,30 @@ bool getpathofcommand(const char *command, std::string &result)
     return !result.empty();
 }
 
+int runcommand(const char *command, char *buf, size_t len)
+{
+    if (!len)
+        return RUNCOMMAND_ERROR;
+
+    FILE *p;
+    size_t outputlen;
+
+    if (!(p = popen(command, "r")) || !(outputlen = fread(buf, sizeof(char), len - 1, p)))
+    {
+        if (p) pclose(p);
+        return RUNCOMMAND_ERROR;
+    }
+
+    buf[outputlen] = '\0';
+    return pclose(p);
+}
+
+void stripfilename(char *path)
+{
+    char *p = strrchr(path, '/');
+    if (*p) *p = '\0';
+}
+
 template<class... T>
 static void envvar(string_vector &env, const char *varname,
                    const char *val, T... values)
@@ -1042,7 +1066,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     printcmdhelp("version", "show version");
                     printcmdhelp("target", "show target");
 
-                    printcmdhelp("env-<var>", std::string("show environment variable  [e.g: ") +
+                    printcmdhelp("env-<var>", std::string("show environment variable  [e.g.: ") +
                                  std::string(COMMANDPREFIX) + std::string("env-ld]"));
 
                     printcmdhelp("elf", "output elf object files");
@@ -1192,6 +1216,7 @@ int main(int argc, char **argv)
     string_vector stdpaths;
     string_vector cxxpaths;
     string_vector analyzerflags;
+    string_vector linkerflags;
     std::string compiler;
     std::string compilerpath;
     std::string compilerbinpath;
@@ -1203,8 +1228,9 @@ int main(int argc, char **argv)
     string_vector cxxflags;
 
     commandargs cmdargs(intrinpaths, stdpaths, cxxpaths, cflags,
-                        cxxflags, analyzerflags, target, compiler,
-                        compilerpath, compilerbinpath, env, args, iscxx);
+                        cxxflags, analyzerflags, linkerflags, target,
+                        compiler, compilerpath, compilerbinpath, env,
+                        args, iscxx);
 
     const char *cachefile = nullptr;
 
@@ -1217,7 +1243,7 @@ int main(int argc, char **argv)
     if (!p++ || std::strncmp(p, "clang", STRLEN("clang")))
     {
         std::cerr << "invalid invocation name: clang should be followed "
-                     "after target (e.g: w32-clang)" << std::endl;
+                     "after target (e.g.: w32-clang)" << std::endl;
         return 1;
     }
 
@@ -1229,7 +1255,7 @@ int main(int argc, char **argv)
     if (!std::strcmp(p, "++")) iscxx = true;
     else if (*p) {
         std::cerr << "invalid invocation name: ++ (or nothing) should be "
-                     "followed after clang (e.g: w32-clang++)" << std::endl;
+                     "followed after clang (e.g.: w32-clang++)" << std::endl;
         return 1;
     }
 
@@ -1512,6 +1538,20 @@ int main(int argc, char **argv)
              */
             concatenvvariable("COMPILER_PATH", path, &cmdargs.compilerpath);
 #endif
+
+            if (cmdargs.islinkstep)
+            {
+                /* https://github.com/tpoechtrager/wclang/issues/22 */
+
+                std::string command = cmdargs.target + "-gcc -print-libgcc-file-name";
+                char output[4096];
+
+                if (runcommand(command.c_str(), output, sizeof(output)) == 0)
+                {
+                    stripfilename(output);
+                    linkerflags.push_back(std::string("-L") + output);
+                }
+            }
         }
 
         args.push_back(compiler);
@@ -1524,6 +1564,7 @@ int main(int argc, char **argv)
 
         pushcompilerflags(analyzerflags);
         pushcompilerflags(iscxx ? cxxflags : cflags);
+        pushcompilerflags(linkerflags);
 
         if (!cmdargs.islinkstep || !cmdargs.usemingwlinker)
         {
