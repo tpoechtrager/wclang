@@ -1627,9 +1627,21 @@ int main(int argc, char **argv)
             if ((p = getenv("WCLANG_NO_INTEGRATED_AS")) && *p == '1')
                 args.push_back("-no-integrated-as");
 
+            /*
+             * For libstdc++ 6, the C++ includes must appear before the standard
+             * includes.
+             *
+             * libstdc++ 6 is very picky if you use -isystem for system include
+             * directories. It needs the C++ path first, otherwise it errors out
+             * with "'stdlib.h' file not found".
+             *
+             * This is a known problem and apparently will not be fixed upstream:
+             *
+             * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=70129
+             */
             pushdirs(intrinpaths);
-            pushdirs(stdpaths);
             pushdirs(cxxpaths);
+            pushdirs(stdpaths);
         }
     }
 
