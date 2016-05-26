@@ -1578,6 +1578,7 @@ int main(int argc, char **argv)
              * case a file is not found in our directories
              */
             args.push_back("-nostdinc");
+            args.push_back("-nostdinc++");
 
             auto pushdirs = [&](const string_vector &paths)
             {
