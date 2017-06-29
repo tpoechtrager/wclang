@@ -1533,7 +1533,7 @@ int main(int argc, char **argv)
             /*
              * COMPILER_PATH would be a perfect solution to get rid of the
              * MinGW-GCC symlinks, but unfortunately it causes MinGW-GCC
-             * to use the wrong assembler/linker on some sytems.
+             * to use the wrong assembler/linker on some systems.
              * GCC is invoked for assembling (prior to clang 3.5) and linking.
              */
             concatenvvariable("COMPILER_PATH", path, &cmdargs.compilerpath);
