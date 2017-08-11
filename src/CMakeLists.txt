@@ -1,4 +1,4 @@
-add_executable(wclang wclang.cpp wclang_time.cpp wclang_cache.cpp)
+add_executable(wclang wclang.cpp wclang_time.cpp)
 install(TARGETS wclang DESTINATION bin)
 
 option(SYMLINK_ALL_TRIPLETS "symlink all triplets" OFF)

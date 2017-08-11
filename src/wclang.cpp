@@ -34,7 +34,6 @@
 #include <cassert>
 #include "wclang.h"
 #include "wclang_time.h"
-#include "wclang_cache.h"
 
 /*
  * Supported targets
@@ -976,18 +975,7 @@ static void parseargs(int argc, char **argv, const char *target,
         {
             case 'a':
             {
-                if (!std::strcmp(arg, "analyze"))
-                {
-                    constexpr const char *analyzerflags[] =
-                    {
-                        "--analyze", "-Xanalyzer", "-analyzer-output=text",
-                        "-Qunused-arguments"
-                    };
-
-                    for (auto &f : analyzerflags)
-                        cmdargs.analyzerflags.push_back(f);
-                }
-                else if (!std::strcmp(arg, "arch") || !std::strcmp(arg, "a"))
+                if (!std::strcmp(arg, "arch") || !std::strcmp(arg, "a"))
                 {
                     const char *end = std::strchr(target, '-');
 
@@ -1009,18 +997,7 @@ static void parseargs(int argc, char **argv, const char *target,
             }
             case 'e':
             {
-                if (!std::strncmp(arg, "elf", STRLEN("elf")))
-                {
-                    if (cmdargs.target.find("-elf") == std::string::npos)
-                    {
-                        /* output elf object files */
-                        cmdargs.target += "-elf";
-                        /* force integrated AS */
-                        cmdargs.cflags.push_back("-integrated-as");
-                        cmdargs.cxxflags.push_back("-integrated-as");
-                    }
-                }
-                else if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
+                if (!std::strncmp(arg, "env-", STRLEN("env-")) ||
                     !std::strncmp(arg, "e-", STRLEN("e-")))
                 {
                     bool found = false;
@@ -1088,9 +1065,7 @@ static void parseargs(int argc, char **argv, const char *target,
                     printcmdhelp("env-<var>", std::string("show environment variable  [e.g.: ") +
                                  std::string(COMMANDPREFIX) + std::string("env-ld]"));
 
-                    printcmdhelp("elf", "output elf object files");
                     printcmdhelp("env", "show all environment variables at once");
-                    printcmdhelp("analyze", "analyze source code");
                     printcmdhelp("arch", "show target architecture");
                     printcmdhelp("static-runtime", "link runtime statically");
                     printcmdhelp("append-exe", "append .exe automatically to output filenames");
@@ -1234,7 +1209,6 @@ int main(int argc, char **argv)
     string_vector intrinpaths;
     string_vector stdpaths;
     string_vector cxxpaths;
-    string_vector analyzerflags;
     string_vector linkerflags;
     std::string compiler;
     std::string compilerpath;
@@ -1247,11 +1221,9 @@ int main(int argc, char **argv)
     string_vector cxxflags;
 
     commandargs cmdargs(intrinpaths, stdpaths, cxxpaths, cflags,
-                        cxxflags, analyzerflags, linkerflags, target,
+                        cxxflags, linkerflags, target,
                         compiler, compilerpath, compilerbinpath, env,
                         args, iscxx);
-
-    const char *cachefile = nullptr;
 
     timepoint("start");
 
@@ -1276,19 +1248,6 @@ int main(int argc, char **argv)
         std::cerr << "invalid invocation name: ++ (or nothing) should be "
                      "followed after clang (e.g.: w32-clang++)" << std::endl;
         return 1;
-    }
-
-    /*
-     * Load cache when requested
-     */
-
-    if ((cachefile = getenv(iscxx ? "WCLANG_LOAD_CXX_CACHE" :
-                                    "WCLANG_LOAD_CC_CACHE")))
-    {
-        timepoint("load cache");
-        loadcache(cachefile, cmdargs);
-        timepoint("load cache end");
-        goto cached;
     }
 
     /*
@@ -1423,8 +1382,6 @@ int main(int argc, char **argv)
         delete[] buf;
     }
 
-    cached:;
-
     /*
      * Parse command arguments late,
      * when we know our environment already
@@ -1469,109 +1426,73 @@ int main(int argc, char **argv)
         }
     }
 
-    if (!analyzerflags.empty() && std::strcmp(argv[argc-1], "-"))
+    if (compiler[0] != '/')
     {
-        pid_t pid = fork();
+        std::string tmp;
 
-        if (pid > 0)
+        if (!getpathofcommand(compiler.c_str(), compilerbinpath))
         {
-            int status = 1;
-
-            if (waitpid(pid, &status, 0) == -1)
-            {
-                ERROR("waitpid() failed");
-                return 1;
-            }
-
-            if (WIFEXITED(status))
-            {
-                if (status)
-                    return status;
-            }
-            else
-            {
-                ERROR("uncaught signal?");
-                return 1;
-            }
-
-            analyzerflags.clear();
+            std::cerr << "cannot find '" << compiler << "' executable"
+                      << std::endl;
+            return 1;
         }
-        else if (pid < 0)
-        {
-            ERROR("fork() failed");
-            return  1;
-        }
+
+        tmp.swap(compiler);
+
+        compiler = compilerbinpath;
+        compiler += "/";
+        compiler += tmp;
     }
 
-    if (!cmdargs.cached)
     {
-        if (compiler[0] != '/')
+        /*
+         * Find MinGW binaries (required for linking)
+         */
+        std::string gcc = target + (iscxx ? "-g++" : "-gcc");
+        std::string path;
+
+        const char *mingwpath = getenv("MINGW_PATH");
+
+        if (!mingwpath)
         {
-            std::string tmp;
-
-            if (!getpathofcommand(compiler.c_str(), compilerbinpath))
-            {
-                std::cerr << "cannot find '" << compiler << "' executable"
-                          << std::endl;
-                return 1;
-            }
-
-            tmp.swap(compiler);
-
-            compiler = compilerbinpath;
-            compiler += "/";
-            compiler += tmp;
+#ifdef MINGW_PATH
+            if (*MINGW_PATH) mingwpath = MINGW_PATH;
+#endif
         }
 
+        if (mingwpath && *mingwpath)
+            concatenvvariable("PATH", mingwpath);
+
+        if (!getpathofcommand(gcc.c_str(), path))
         {
-            /*
-             * Find MinGW binaries (required for linking)
-             */
-            std::string gcc = target + (iscxx ? "-g++" : "-gcc");
-            std::string path;
-
-            const char *mingwpath = getenv("MINGW_PATH");
-
-            if (!mingwpath)
-            {
-#ifdef MINGW_PATH
-                if (*MINGW_PATH) mingwpath = MINGW_PATH;
-#endif
-            }
-
-            if (mingwpath && *mingwpath)
-                concatenvvariable("PATH", mingwpath);
-
-            if (!getpathofcommand(gcc.c_str(), path))
-            {
-                std::cerr << "cannot find " << gcc << " executable" << std::endl;
-                return 1;
-            }
+            std::cerr << "cannot find " << gcc << " executable" << std::endl;
+            return 1;
+        }
 
 #if 0
-            /*
-             * COMPILER_PATH would be a perfect solution to get rid of the
-             * MinGW-GCC symlinks, but unfortunately it causes MinGW-GCC
-             * to use the wrong assembler/linker on some systems.
-             * GCC is invoked for assembling (prior to clang 3.5) and linking.
-             */
-            concatenvvariable("COMPILER_PATH", path, &cmdargs.compilerpath);
+        /*
+         * COMPILER_PATH would be a perfect solution to get rid of the
+         * MinGW-GCC symlinks, but unfortunately it causes MinGW-GCC
+         * to use the wrong assembler/linker on some systems.
+         * GCC is invoked for assembling (prior to clang 3.5) and linking.
+         */
+        concatenvvariable("COMPILER_PATH", path, &cmdargs.compilerpath);
 #endif
 
-            if (cmdargs.islinkstep)
+        if (cmdargs.islinkstep)
+        {
+            /* https://github.com/tpoechtrager/wclang/issues/22 */
+
+            std::string command = cmdargs.target + "-gcc -print-libgcc-file-name";
+            char output[4096];
+
+            if (runcommand(command.c_str(), output, sizeof(output)) == 0)
             {
-                /* https://github.com/tpoechtrager/wclang/issues/22 */
-
-                std::string command = cmdargs.target + "-gcc -print-libgcc-file-name";
-                char output[4096];
-
-                if (runcommand(command.c_str(), output, sizeof(output)) == 0)
-                {
-                    stripfilename(output);
-                    linkerflags.push_back(std::string("-L") + output);
-                }
+                stripfilename(output);
+                linkerflags.push_back(std::string("-L") + output);
             }
         }
+
 
         args.push_back(compiler);
 
@@ -1581,7 +1502,6 @@ int main(int argc, char **argv)
                 args.push_back(flag);
         };
 
-        pushcompilerflags(analyzerflags);
         pushcompilerflags(iscxx ? cxxflags : cflags);
         pushcompilerflags(linkerflags);
 
@@ -1703,16 +1623,6 @@ int main(int argc, char **argv)
         appendexetooutputname(cargs);
 
     /*
-     * Write cache when requested
-     */
-
-    if (!cmdargs.cached && getenv(iscxx ? "WCLANG_WRITE_CXX_CACHE" :
-                                          "WCLANG_WRITE_CC_CACHE"))
-    {
-        writecache(cmdargs); /* no return */
-    }
-
-    /*
      * Execute command
      */
 
@@ -1737,11 +1647,6 @@ int main(int argc, char **argv)
         verbosemsg("command out: %", commandout);
         printtimes();
     }
-
-#if 0
-    if (cmdargs.cached && !cmdargs.compilerpath.empty())
-        setenv("COMPILER_PATH", cmdargs.compilerpath.c_str(), 1);
-#endif
 
     execvp(compiler.c_str(), cargs);
 

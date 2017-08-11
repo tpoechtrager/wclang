@@ -161,7 +161,6 @@ enum optimize {
 };
 
 struct commandargs {
-    bool cached;
     bool verbose;
     compilerver clangversion;
     compilerver mingwversion;
@@ -170,7 +169,6 @@ struct commandargs {
     string_vector &cxxpaths;
     string_vector &cflags;
     string_vector &cxxflags;
-    string_vector &analyzerflags;
     string_vector &linkerflags;
     std::string &target;
     std::string &compiler;
@@ -188,13 +186,13 @@ struct commandargs {
     int usemingwlinker;
 
     commandargs(string_vector &intrinpaths, string_vector &stdpaths, string_vector &cxxpaths,
-                string_vector &cflags, string_vector &cxxflags, string_vector &analyzerflags,
+                string_vector &cflags, string_vector &cxxflags,
                 string_vector &linkerflags, std::string &target, std::string &compiler,
                 std::string &compilerpath, std::string &compilerbinpath, string_vector &env,
                 string_vector &args, bool &iscxx)
                 :
-                cached(false), verbose(false), intrinpaths(intrinpaths), stdpaths(stdpaths),
-                cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags), analyzerflags(analyzerflags),
+                verbose(false), intrinpaths(intrinpaths), stdpaths(stdpaths),
+                cxxpaths(cxxpaths), cflags(cflags), cxxflags(cxxflags),
                 linkerflags(linkerflags), target(target), compiler(compiler), compilerpath(compilerpath),
                 compilerbinpath(compilerbinpath), env(env), args(args), iscxx(iscxx),
                 appendexe(false), iscompilestep(false), islinkstep(false), nointrinsics(false),

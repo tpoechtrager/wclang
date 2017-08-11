@@ -54,8 +54,8 @@ int main() {
 
 set (PACKAGE_NAME ${PROJECT_NAME})
 set (PACKAGE_BUGREPORT t.poechtrager@gmail.com)
-set (PACKAGE_VERSION 0.5)
-set (VERSION "${PROJECT_NAME} 0.5")
+set (PACKAGE_VERSION 0.6)
+set (VERSION "${PROJECT_NAME} 0.6")
 
 
 find_program (CLANG_C_COMPILER NAMES clang)
