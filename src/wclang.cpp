@@ -1,6 +1,6 @@
 /***********************************************************************
  *  wclang                                                             *
- *  Copyright (C) 2013, 2014 by Thomas Poechtrager                     *
+ *  Copyright (C) 2013-2017 Thomas Poechtrager                         *
  *  t.poechtrager@gmail.com                                            *
  *                                                                     *
  *  This program is free software; you can redistribute it and/or      *
@@ -541,6 +541,20 @@ void appendexetooutputname(char **cargs)
  * Tools
  */
 
+bool isterminal()
+{
+    static bool first = false;
+    static bool val;
+
+    if (!first)
+    {
+        val = !!isatty(fileno(stderr));
+        first = true;
+    }
+
+    return val;
+}
+
 void concatenvvariable(const char *var, const std::string val, std::string *nval)
 {
     std::string tmp;
@@ -771,7 +785,12 @@ static void warn(const char *str, T value, Args... args)
 {
     std::ostringstream buf;
     std::string warnmsg = fmtstring(buf, str, value, std::forward<Args>(args)...);
-    std::cerr << KBLD PACKAGE_NAME << ": warning: " KNRM << warnmsg << std::endl;
+    if (isterminal())
+    {
+        std::cerr << KBLD PACKAGE_NAME ": warning: " KNRM << warnmsg << std::endl;
+        return;
+    }
+    std::cerr << "warning: " << warnmsg << std::endl;
 }
 
 static void warn(const char *str)
@@ -1164,7 +1183,7 @@ static void parseargs(int argc, char **argv, const char *target,
                 if (!std::strcmp(arg, "version") || !std::strcmp(arg, "v"))
                 {
                     printheader();
-                    std::cout << "Copyright (C) 2013, 2014 Thomas Poechtrager" << std::endl;
+                    std::cout << "Copyright (C) 2013-2017 Thomas Poechtrager" << std::endl;
                     std::cout << "License: GPL v2" << std::endl;
                     std::cout << "Bugs / Wishes: " << PACKAGE_BUGREPORT << std::endl;
                     std::exit(EXIT_SUCCESS);

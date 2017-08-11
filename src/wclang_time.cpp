@@ -1,6 +1,6 @@
 /***********************************************************************
  *  wclang                                                             *
- *  Copyright (C) 2013, 2014 by Thomas Poechtrager                     *
+ *  Copyright (C) 2013-2017 Thomas Poechtrager                         *
  *  t.poechtrager@gmail.com                                            *
  *                                                                     *
  *  This program is free software; you can redistribute it and/or      *
