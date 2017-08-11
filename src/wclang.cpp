@@ -1598,6 +1598,7 @@ int main(int argc, char **argv)
              */
             args.push_back("-nostdinc");
             args.push_back("-nostdinc++");
+            args.push_back("-Qunused-arguments");
 
             auto pushdirs = [&](const string_vector &paths)
             {
