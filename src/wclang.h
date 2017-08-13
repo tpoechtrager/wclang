@@ -48,7 +48,8 @@ typedef std::vector<std::string> string_vector;
 void concatenvvariable(const char *var, const std::string val, std::string *nval = nullptr);
 
 typedef bool (*listfilescallback)(const char *dir, const char *file);
-bool isdirectory(const char *file);
+bool fileexists(const char *file);
+bool isdirectory(const char *file, const char *prefix);
 bool listfiles(const char *dir, std::vector<std::string> *files, listfilescallback cmp = nullptr);
 
 typedef bool (*realpathcmp)(const char *file, const struct stat &st);
@@ -63,7 +64,7 @@ void stripfilename(char *path);
 struct compilerversion;
 typedef compilerversion compilerver;
 compilerver parsecompilerversion(const char *compilerversion);
-compilerver findhighestcompilerversion(const char *dir, listfilescallback cmp = nullptr);
+compilerver findlatestcompilerversion(const char *dir, listfilescallback cmp = nullptr);
 
 #undef major
 #undef minor

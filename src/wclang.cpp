@@ -172,7 +172,7 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
              * b: a / xxxx-w64-mingw32
              */
 
-            mv = findhighestcompilerversion(cxxheaders.c_str());
+            mv = findlatestcompilerversion(cxxheaders.c_str());
 
             if (!mv.num())
                 continue;
@@ -198,8 +198,8 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
             cxxheaders += cxxinclude;
             cxxheaders += "/";
 
-            mv = findhighestcompilerversion(cxxheaders.c_str(),
-                                            checkmingwheaders);
+            mv = findlatestcompilerversion(cxxheaders.c_str(),
+                                           checkmingwheaders);
 
             if (!mv.num())
                 continue;
@@ -226,8 +226,8 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
             cxxheaders += target;
             cxxheaders += "/";
 
-            mv = findhighestcompilerversion(cxxheaders.c_str(),
-                                            checkmingwheaders);
+            mv = findlatestcompilerversion(cxxheaders.c_str(),
+                                           checkmingwheaders);
 
             if (!mv.num())
                 continue;
@@ -258,7 +258,7 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
             cxxheaders += target;
             cxxheaders += "/";
 
-            mv = findhighestcompilerversion(cxxheaders.c_str());
+            mv = findlatestcompilerversion(cxxheaders.c_str());
 
             if (!mv.num())
                 continue;
@@ -287,47 +287,120 @@ static bool findcxxheaders(const char *target, commandargs &cmdargs)
     return findheaders();
 }
 
-static bool findintrinheaders(commandargs &cmdargs, const std::string &clangdir)
+static bool findintrinheaders(commandargs &cmdargs, const std::string &clangbindir)
 {
-    std::stringstream intrindir;
-    auto &cv = cmdargs.clangversion;
-    struct stat st;
+    static std::stringstream dir;
+    static compilerver *clangversion;
+    static std::string pathtmp;
+
+    clangversion = &cmdargs.clangversion;
+    string_vector &intrinpaths = cmdargs.intrinpaths;
+
+    clear(dir);
+    *clangversion = compilerver();
+    pathtmp.clear();
 
     auto trydir = [&]() -> bool
     {
-        if (!cv.num()) return false;
-
-        intrindir << cv.s << "/include";
-
-        if (!stat(intrindir.str().c_str(), &st) && S_ISDIR(st.st_mode) &&
-            !cmdargs.nointrinsics)
+        listfiles(dir.str().c_str(), nullptr, [](const char *, const char *file)
         {
-            cmdargs.intrinpaths.push_back(intrindir.str());
+            if (file[0] != '.' && isdirectory(file, dir.str().c_str()))
+            {
+                compilerver cv = parsecompilerversion(file);
+
+                if (cv != compilerver())
+                {
+                    static std::stringstream tmp;
+                    clear(tmp);
+
+                    auto checkdir = [&](std::stringstream &dir)
+                    {
+                        static std::string intrindir;
+                        auto &file = dir;
+
+                        intrindir = dir.str();
+                        file << "/xmmintrin.h";
+
+                        if (fileexists(file.str().c_str()))
+                        {
+                            if (cv > *clangversion)
+                            {
+                                *clangversion = cv;
+                                pathtmp.swap(intrindir);
+                            }
+                            return true;
+                        }
+
+                        return false;
+                    };
+
+                    tmp << dir.str() << "/" << file << "/include";
+
+                    if (!checkdir(tmp))
+                    {
+                        clear(tmp);
+                        tmp << dir.str() << "/" << file;
+                        checkdir(tmp);
+                    }
+                }
+                return true;
+            }
             return true;
-        }
-
-        return false;
+        });
+        return *clangversion != compilerver();
     };
 
-    auto checkdir = [&](const char *dir) -> bool
-    {
-        clear(intrindir);
+#define TRYDIR(basedir, subdir)               \
+do                                            \
+{                                             \
+    dir << basedir << subdir;                 \
+    if (trydir())                             \
+    {                                         \
+        intrinpaths.push_back(pathtmp);       \
+        return true;                          \
+    }                                         \
+    clear(dir);                               \
+} while (0)
 
-        intrindir << clangdir << dir << "/";
-        cv = findhighestcompilerversion(intrindir.str().c_str());
+#define TRYDIR2(libdir) TRYDIR(clangbindir, libdir)
+#define TRYDIR3(libdir) TRYDIR(std::string(), libdir)
 
-        return trydir();
-    };
-
-    if (checkdir("/../lib/clang"))
-        return true;
-
-#if defined(__x86_64__) || defined(__LP64__)
-    if (checkdir("/../lib64/clang"))
-        return true;
+#ifdef __CYGWIN__
+#ifdef __x86_64__
+    TRYDIR2("/../lib/clang/x86_64-pc-cygwin");
+#else
+    TRYDIR2("/../lib/clang/i686-pc-cygwin");
+#endif
 #endif
 
-    return checkdir("/../include/clang");
+    TRYDIR2("/../lib/clang");
+
+#ifdef __linux__
+#ifdef __x86_64__
+    // opensuse uses lib64 instead of lib on x86_64
+    TRYDIR2("/../lib64/clang");
+#elif __i386__
+    TRYDIR2("/../lib32/clang");
+#endif
+#endif
+
+#ifdef __APPLE__
+    constexpr const char *OSXIntrinDirs[] =
+    {
+        "/Library/Developer/CommandLineTools/usr/lib/clang",
+        "/Applications/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang"
+    };
+
+    for (auto intrindir : OSXIntrinDirs) TRYDIR3(intrindir);
+#endif
+
+    TRYDIR2("/../include/clang");
+    TRYDIR2("/usr/include/clang");
+
+    return false;
+#undef TRYDIR
+#undef TRYDIR2
+#undef TRYDIR3
 }
 
 static bool findstdheader(const char *target, commandargs &cmdargs)
@@ -598,7 +671,7 @@ compilerver parsecompilerversion(const char *compilerversion)
     return ver;
 }
 
-compilerver findhighestcompilerversion(const char *dir, listfilescallback cmp)
+compilerver findlatestcompilerversion(const char *dir, listfilescallback cmp)
 {
     static std::vector<compilerver> v;
     static std::vector<std::string> dirs;
@@ -620,9 +693,24 @@ compilerver findhighestcompilerversion(const char *dir, listfilescallback cmp)
     return v[v.size() - 1];
 }
 
-bool isdirectory(const char *file)
+bool fileexists(const char *file)
 {
     struct stat st;
+    return !stat(file, &st);
+}
+
+bool isdirectory(const char *file, const char *prefix)
+{
+    struct stat st;
+
+    if (prefix)
+    {
+        std::string tmp = prefix;
+        tmp += "/";
+        tmp += file;
+        return !stat(tmp.c_str(), &st) && S_ISDIR(st.st_mode);
+    }
+
     return !stat(file, &st) && S_ISDIR(st.st_mode);
 }
 
@@ -1542,6 +1630,9 @@ int main(int argc, char **argv)
                  */
                 args.push_back("-D_STDIO_S_DEFINED");
             }
+
+            if (cmdargs.verbose)
+                verbosemsg("detected clang version: %", cmdargs.clangversion.str());
 
             if (cmdargs.exceptions != 0 && (cmdargs.clangversion < compilerver(3, 7, 0) ||
                 targettype == TARGET_WIN32))
