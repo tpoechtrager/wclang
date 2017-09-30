@@ -1,0 +1,16 @@
+Source: wclang
+Section: devel
+Priority: optional
+Maintainer: Mateusz Mikuła <mati865@gmail.com>
+Build-Depends: debhelper (>= 9), cmake, clang, mingw-w64
+Standards-Version: 3.9.8
+Homepage: https://github.com/tpoechtrager/wclang
+Vcs-Git: https://github.com/tpoechtrager/wclang.git
+Vcs-Browser: https://github.com/tpoechtrager/wclang.git
+
+Package: wclang
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, clang, mingw-w64
+Description: Cross compile source code easily for Windows with clang on Linux/Unix
+ Wclang is a tool which helps you to cross compile source code easily with clang on Linux/Unix for Windows.
+ Wclang is basically a wrapper for clang, which allows you to directly target Windows.
