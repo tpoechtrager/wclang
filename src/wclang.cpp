@@ -1656,6 +1656,11 @@ int main(int argc, char **argv)
                 }
             }
 
+            if (targettype == TARGET_WIN32 && cmdargs.clangversion >= compilerver(6, 0, 0))
+            {
+              args.push_back("-fsjlj-exceptions");
+            }
+
             if ((p = getenv("WCLANG_NO_INTEGRATED_AS")) && *p == '1')
                 args.push_back("-no-integrated-as");
 
