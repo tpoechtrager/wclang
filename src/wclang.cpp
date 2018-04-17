@@ -1635,7 +1635,7 @@ int main(int argc, char **argv)
                 verbosemsg("detected clang version: %", cmdargs.clangversion.str());
 
             if (cmdargs.exceptions != 0 && (cmdargs.clangversion < compilerver(3, 7, 0) ||
-                targettype == TARGET_WIN32))
+                (targettype == TARGET_WIN32 && cmdargs.clangversion < compilerver(6, 0, 0))))
             {
                 char *p;
                 if (!(p = getenv("WCLANG_FORCE_CXX_EXCEPTIONS")) || *p == '0')
@@ -1654,6 +1654,11 @@ int main(int argc, char **argv)
                 else {
                     cmdargs.exceptions = -1;
                 }
+            }
+
+            if (targettype == TARGET_WIN32 && cmdargs.clangversion >= compilerver(6, 0, 0))
+            {
+              args.push_back("-fsjlj-exceptions");
             }
 
             if ((p = getenv("WCLANG_NO_INTEGRATED_AS")) && *p == '1')
