@@ -29,7 +29,7 @@ LISTING AVAILABLE PARAMETERS:
  i686-w64-clang -wc-help
 
 LIMITATIONS:
- C++ exceptions do not work with clang prior to 3.7, and in 3.7 just for 64-bit.
+ C++ exceptions do not work with clang<3.7, and in 3.7 just for 64-bit, clang>=6.0 added support for 32-bit.
 
 KNOWN TO WORK ON:
 
