@@ -70,7 +70,7 @@ execute_process ( COMMAND ${CLANG_C_COMPILER} --version
                 )
 string (REGEX REPLACE ".*version ([0-9\\.]+).*"
          "\\1" CLANG_VERSION
-         ${CLANG_VERSION})
+         "${CLANG_VERSION}")
 if (CLANG_VERSION VERSION_GREATER 3.0)
   set (CLANG_TARGET_OPT_FLAG -target)
 else ()
