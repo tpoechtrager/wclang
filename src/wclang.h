@@ -44,6 +44,7 @@ typedef std::vector<std::string> string_vector;
 
 #define KNRM "\x1B[0m"
 #define KBLD "\x1B[1m"
+#define PATHDIV '/'
 
 void concatenvvariable(const char *var, const std::string val, std::string *nval = nullptr);
 
@@ -51,9 +52,12 @@ typedef bool (*listfilescallback)(const char *dir, const char *file);
 bool fileexists(const char *file);
 bool isdirectory(const char *file, const char *prefix);
 bool listfiles(const char *dir, std::vector<std::string> *files, listfilescallback cmp = nullptr);
+const char *getfileName(const char *file);
 
 typedef bool (*realpathcmp)(const char *file, const struct stat &st);
-std::string &realpath(const char *file, std::string &result, realpathcmp cmp = nullptr);
+bool ignoreccache(const char *f, const struct stat &);
+bool wcrealpath(const char *file, std::string &result, realpathcmp cmp1 = nullptr,
+                realpathcmp cmp2 = nullptr, const size_t maxSymobolicLinkDepth = 1000);
 bool getpathofcommand(const char *bin, std::string &result);
 
 constexpr int RUNCOMMAND_ERROR = -100000;

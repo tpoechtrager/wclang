@@ -1,6 +1,6 @@
 /***********************************************************************
  *  wclang                                                             *
- *  Copyright (C) 2013-2017 Thomas Poechtrager                         *
+ *  Copyright (C) 2013-2019 Thomas Poechtrager                         *
  *  t.poechtrager@gmail.com                                            *
  *                                                                     *
  *  This program is free software; you can redistribute it and/or      *
@@ -31,6 +31,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <climits>
+#include <cstdlib>
 #include <cassert>
 #include "wclang.h"
 #include "wclang_time.h"
@@ -739,40 +740,100 @@ bool listfiles(const char *dir, std::vector<std::string> *files,
     return true;
 }
 
-std::string &realpath(const char *file, std::string &result, realpathcmp cmp)
+const char *getfileName(const char *file)
+{
+    const char *p = strrchr(file, PATHDIV);
+    if (!p) p = file;
+    else ++p;
+    return p;
+}
+
+
+bool ignoreccache(const char *f, const struct stat &) {
+  const char *name = getfileName(f);
+  return name && strstr(name, "ccache") != name;
+}
+
+bool wcrealpath(const char *file, std::string &result,
+              realpathcmp cmp1, realpathcmp cmp2,
+              const size_t maxSymbolicLinkDepth)
 {
     char *PATH = getenv("PATH");
-    const char *p = PATH;
-    std::string sfile;
+    const char *p = PATH ? PATH : "";
     struct stat st;
 
-    assert(PATH && "this shouldn't happen");
+    result.clear();
 
     do
     {
-        if (*p == ':') p++;
+        if (*p == ':') ++p;
+        while (*p && *p != ':') result += *p++;
 
-        while (*p && *p != ':')
-            sfile += *p++;
+        result += "/";
+        result += file;
 
-        sfile += "/";
-        sfile += file;
+        if (!stat(result.c_str(), &st))
+        {
+            if (maxSymbolicLinkDepth == 0)
+            return true;
 
-        if (!stat(sfile.c_str(), &st) && (!cmp || cmp(sfile.c_str(), st)))
+            char buf[PATH_MAX + 1];
+
+            if (realpath(result.c_str(), buf))
+            {
+                result.assign(buf);
+            }
+            else
+            {
+                ssize_t len;
+                char path[PATH_MAX];
+                size_t pathlen;
+                size_t n = 0;
+
+                pathlen = result.find_last_of(PATHDIV);
+
+                if (pathlen == std::string::npos) pathlen = result.length();
+                else ++pathlen; // PATHDIV
+        
+                memcpy(path, result.c_str(), pathlen); // not null terminated
+
+                while ((len = readlink(result.c_str(), buf, PATH_MAX)) != -1)
+                {
+                    if (buf[0] != PATHDIV)
+                    {
+                        result.assign(path, pathlen);
+                        result.append(buf, len);
+                    }
+                    else
+                    {
+                        result.assign(buf, len);
+                        pathlen = strrchr(buf, PATHDIV) - buf + 1; // + 1: PATHDIV
+                        memcpy(path, buf, pathlen);
+                    }
+                    if (++n >= maxSymbolicLinkDepth)
+                    {
+                        result.clear();
+                        break;
+                    }
+                }
+            }
+
+            if ((!cmp1 || cmp1(result.c_str(), st)) &&
+                (!cmp2 || cmp2(result.c_str(), st)))
             break;
+        }
 
-        sfile.clear();
+        result.clear();
     } while (*p);
 
-    result.swap(sfile);
-    return result;
+    return !result.empty();
 }
 
 bool getpathofcommand(const char *command, std::string &result)
 {
-    realpath(command, result, [](const char *f, const struct stat&){
+    wcrealpath(command, result, [](const char *f, const struct stat&){
         return !access(f, F_OK|X_OK);
-    });
+    }, ignoreccache);
 
     size_t pos = result.find_last_of("/");
 
@@ -1492,7 +1553,7 @@ int main(int argc, char **argv)
             warn("linking with % because of unimplemented %", compiler, desc[index]);
         }
 
-        realpath(compiler.c_str(), compiler);
+        wcrealpath(compiler.c_str(), compiler);
     }
 
     if ((targettype == TARGET_WIN64) &&
