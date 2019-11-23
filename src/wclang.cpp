@@ -749,14 +749,15 @@ const char *getfileName(const char *file)
 }
 
 
-bool ignoreccache(const char *f, const struct stat &) {
-  const char *name = getfileName(f);
-  return name && strstr(name, "ccache") != name;
+bool ignoreccache(const char *f, const struct stat &)
+{
+    const char *name = getfileName(f);
+    return name && strstr(name, "ccache") != name;
 }
 
 bool wcrealpath(const char *file, std::string &result,
-              realpathcmp cmp1, realpathcmp cmp2,
-              const size_t maxSymbolicLinkDepth)
+                realpathcmp cmp1, realpathcmp cmp2,
+                const size_t maxSymbolicLinkDepth)
 {
     char *PATH = getenv("PATH");
     const char *p = PATH ? PATH : "";
@@ -775,7 +776,7 @@ bool wcrealpath(const char *file, std::string &result,
         if (!stat(result.c_str(), &st))
         {
             if (maxSymbolicLinkDepth == 0)
-            return true;
+                return true;
 
             char buf[PATH_MAX + 1];
 
@@ -810,6 +811,7 @@ bool wcrealpath(const char *file, std::string &result,
                         pathlen = strrchr(buf, PATHDIV) - buf + 1; // + 1: PATHDIV
                         memcpy(path, buf, pathlen);
                     }
+
                     if (++n >= maxSymbolicLinkDepth)
                     {
                         result.clear();
@@ -1552,8 +1554,6 @@ int main(int argc, char **argv)
             size_t index = cmdargs.usemingwlinker-2;
             warn("linking with % because of unimplemented %", compiler, desc[index]);
         }
-
-        wcrealpath(compiler.c_str(), compiler);
     }
 
     if ((targettype == TARGET_WIN64) &&
